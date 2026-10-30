@@ -143,7 +143,7 @@ export default function HomePage() {
               <div className="overflow-hidden">
                 <h1 className="text-xs sm:text-base font-bold text-white flex items-center gap-1.5 truncate">
                   <span className="sm:hidden">THCS Lê Anh Xuân</span>
-                  <span className="hidden sm:inline">THCS Lê Anh Xuân • Sky Lab 360°</span>
+                  <span className="hidden sm:inline">THCS Lê Anh Xuân</span>
                   <span className="hidden md:inline-block text-[10px] px-2 py-0.5 rounded-full bg-cyan-500/20 text-cyan-300 font-mono border border-cyan-500/30">
                     EduTech VR
                   </span>
@@ -162,7 +162,7 @@ export default function HomePage() {
                 className="min-h-[44px] flex items-center gap-1.5 px-2.5 sm:px-3.5 py-2 rounded-2xl bg-gradient-to-r from-amber-500 via-orange-500 to-red-600 text-white font-bold text-xs sm:text-sm shadow-xl shadow-amber-500/30 hover:scale-105 active:scale-95 transition-all border border-amber-300 shrink-0"
               >
                 <Landmark size={15} />
-                <span>🏛️ Sky Lab</span>
+                <span>Sky Lab</span>
               </button>
 
               {/* Button: Admin CMS */}
