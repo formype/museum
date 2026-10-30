@@ -37,8 +37,10 @@ export default function AutoTourGuide({
   const timerRef = useRef<NodeJS.Timeout | null>(null);
   const currentIndexRef = useRef(0);
   const stepsRef = useRef<TourStep[]>(steps);
+  const onNavigateRef = useRef(onNavigateToCoords);
 
   stepsRef.current = steps;
+  onNavigateRef.current = onNavigateToCoords;
 
   const clearPendingTimer = useCallback(() => {
     if (timerRef.current) {
@@ -60,7 +62,9 @@ export default function AutoTourGuide({
     if (!step) return;
 
     // Smoothly turn camera to coords
-    onNavigateToCoords(step.pitch, step.yaw);
+    if (onNavigateRef.current) {
+      onNavigateRef.current(step.pitch, step.yaw);
+    }
 
     const textToRead = step.audioText || step.description || step.title;
     spaceAudio.speakNarration(textToRead, undefined, () => {
@@ -85,7 +89,7 @@ export default function AutoTourGuide({
         isPlayingRef.current = false;
       }
     });
-  }, [clearPendingTimer, onNavigateToCoords]);
+  }, [clearPendingTimer]);
 
   // Handle tour activation / deactivation
   useEffect(() => {
@@ -102,13 +106,16 @@ export default function AutoTourGuide({
     setIsPlaying(true);
     isPlayingRef.current = true;
     setIsCompleted(false);
+    setCurrentStepIndex(0);
+    currentIndexRef.current = 0;
     executeStep(0);
 
     return () => {
       clearPendingTimer();
       spaceAudio.stopSpeech();
     };
-  }, [isActive, clearPendingTimer, executeStep]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isActive, title]);
 
   const handlePause = () => {
     setIsPlaying(false);

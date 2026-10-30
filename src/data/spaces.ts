@@ -41,6 +41,7 @@ export interface SpaceData {
   stats: {
     diameter: string;
     distanceFromSun: string;
+    distanceFromEarth?: string;
     dayLength: string;
     yearLength: string;
     temperature: string;
@@ -84,6 +85,7 @@ export const SPACES_DATA: Record<string, SpaceData> = {
     stats: {
       diameter: "1,392,700 km (gấp 109 lần Trái Đất)",
       distanceFromSun: "0 km (Trung tâm Hệ Mặt Trời)",
+      distanceFromEarth: "149.6 triệu km (~1 AU • 8.3 phút ánh sáng)",
       dayLength: "27 ngày (tự quay quanh trục)",
       yearLength: "230 triệu năm (quanh dải Ngân Hà)",
       temperature: "5,500°C (bề mặt) / 15 triệu°C (lõi)",
@@ -177,6 +179,7 @@ export const SPACES_DATA: Record<string, SpaceData> = {
     stats: {
       diameter: "4,879 km",
       distanceFromSun: "57.9 triệu km (0.39 AU)",
+      distanceFromEarth: "77 - 222 triệu km (Trung bình: ~91.7 triệu km)",
       dayLength: "59 ngày Trái Đất",
       yearLength: "88 ngày Trái Đất",
       temperature: "-180°C (đêm) đến 430°C (ngày)",
@@ -247,6 +250,7 @@ export const SPACES_DATA: Record<string, SpaceData> = {
     stats: {
       diameter: "12,104 km (bằng 95% Trái Đất)",
       distanceFromSun: "108.2 triệu km (0.72 AU)",
+      distanceFromEarth: "38 - 261 triệu km (Gần nhất: ~38 triệu km)",
       dayLength: "243 ngày Trái Đất (quay ngược)",
       yearLength: "225 ngày Trái Đất",
       temperature: "465°C (nóng nhất Hệ Mặt Trời)",
@@ -300,40 +304,44 @@ export const SPACES_DATA: Record<string, SpaceData> = {
     id: "earth",
     name: "Trái Đất",
     nameEn: "Earth",
-    tagline: "Hòn ngọc xanh lộng lẫy - cái nôi duy nhất của sự sống trong vũ trụ",
+    tagline: "Hành tinh xanh sự sống • Trục nghiêng 23.5° tạo nên 4 mùa kỳ diệu",
     category: "rocky_planet",
     themeColor: "#38bdf8",
     accentGlow: "rgba(56, 189, 248, 0.4)",
     stats: {
       diameter: "12,742 km",
       distanceFromSun: "149.6 triệu km (1.0 AU)",
-      dayLength: "24 giờ",
-      yearLength: "365.25 ngày",
+      distanceFromEarth: "0 km (Hành tinh quê hương của chúng ta)",
+      dayLength: "23 giờ 56 phút (Tự quay quanh trục)",
+      yearLength: "365.25 ngày (Chu kỳ quay quanh Mặt Trời)",
       temperature: "Trung bình 15°C (-88°C đến 58°C)",
       moons: "1 vệ tinh tự nhiên (Mặt Trăng)"
     },
-    overview: "Trái Đất là hành tinh thứ 3 tính từ Mặt Trời, nơi duy nhất trong vũ trụ được xác nhận có nước lỏng và sự sống sinh sôi.",
+    overview: "Trái Đất là hành tinh thứ 3 tính từ Mặt Trời. Trục tự quay của Trái Đất nghiêng một góc 23°27' (khoảng 23.5°) so với pháp tuyến của mặt phẳng quỹ đạo và hầu như không đổi hướng trong không gian khi quay quanh Mặt Trời. Do trục nghiêng này, hai nửa cầu Bắc và Nam luân phiên chúc về phía Mặt Trời sinh ra hiện tượng bốn mùa (Xuân, Hạ, Thu, Đông) và ngày đêm dài ngắn theo mùa.",
     keyFeatures: [
-      "Hành tinh duy nhất có nước lỏng ổn định trên bề mặt",
-      "Bầu khí quyển bảo vệ giàu oxy và tầng Ozone"
+      "Trục Trái Đất nghiêng 23.5° không đổi hướng, tạo nên hiện tượng 4 mùa và ngày đêm dài ngắn theo vĩ độ",
+      "Đường phân chia sáng - tối luôn vuông góc với mặt phẳng quỹ đạo và hướng tia sáng Mặt Trời",
+      "Mặt Trăng quay quanh Trái Đất theo chu kỳ 27.3 ngày tạo nên các pha trăng và hiện tượng thủy triều",
+      "71% diện tích bề mặt là đại dương, hành tinh duy nhất có sự sống sinh sôi"
     ],
     audioNarration: {
-      title: "Trái Đất: Viên ngọc xanh kỳ diệu và ngôi nhà chung của sự sống",
-      speaker: "Hướng Dẫn Viên Thiên Văn Thùy Dương",
-      durationSec: 48,
-      transcript: "Chào mừng các bạn trở về với Trái Đất, hành tinh xanh thân yêu của chúng ta. Nhìn từ ngoài không gian, những đại dương bao la, các lục địa xanh tươi và dải mây trắng tạo nên một bức tranh tuyệt mỹ, nơi duy nhất nuôi dưỡng hàng triệu loài sinh vật.",
+      title: "Trái Đất: Trục nghiêng 23.5 độ và hiện tượng bốn mùa địa lý",
+      speaker: "Cô Giáo Địa Lý Ánh Dương",
+      durationSec: 50,
+      transcript: "Chào các em học sinh! Các em có biết vì sao Trái Đất lại có bốn mùa Xuân, Hạ, Thu, Đông không? Đó là nhờ trục Trái Đất luôn nghiêng 23.5 độ khi quay quanh Mặt Trời. Khi bán cầu nào nghiêng về phía Mặt Trời, bán cầu đó nhận được nhiều ánh sáng và nhiệt, đó là mùa hạ. Ngược lại, bán cầu nghiêng xa Mặt Trời sẽ nhận được ít nhiệt hơn, đó là mùa đông.",
     },
     aiContext: {
-      roleName: "Gaia - Trợ Lý Trái Đất",
+      roleName: "Thầy Trái Đất - Địa Lý Tự Nhiên",
       avatarEmoji: "🌍",
-      personaDescription: "Người bạn thiên nhiên thông thái, truyền cảm hứng về khoa học và bảo vệ môi trường.",
+      personaDescription: "Chuyên gia địa lý tự nhiên giúp học sinh hiểu sâu về trục nghiêng 23.5°, các mùa và hệ Mặt Trời.",
       coreKnowledge: [
-        "Vùng sinh sống (Habitable Zone / Goldilocks Zone)",
-        "Nước chiếm 71% bề mặt"
+        "Góc nghiêng trục Trái Đất 23.5 độ (23°27')",
+        "Chuyển động tự quay quanh trục từ Tây sang Đông",
+        "Mặt Trăng là vệ tinh tự nhiên duy nhất của Trái Đất"
       ],
       suggestedQuestions: [
-        "Tại sao Trái Đất lại có 4 mùa trong năm?",
-        "Nước trên Trái Đất có nguồn gốc từ đâu?"
+        "Tại sao trục nghiêng 23.5 độ lại tạo ra hiện tượng bốn mùa?",
+        "Mặt Trăng quay quanh Trái Đất như thế nào và gây ra thủy triều ra sao?"
       ]
     },
     hotspots: [
@@ -367,7 +375,8 @@ export const SPACES_DATA: Record<string, SpaceData> = {
     accentGlow: "rgba(203, 213, 225, 0.4)",
     stats: {
       diameter: "3,474 km",
-      distanceFromSun: "149.6 triệu km (cách Trái Đất 384,400 km)",
+      distanceFromSun: "149.6 triệu km (cùng quỹ đạo Trái Đất)",
+      distanceFromEarth: "384,400 km (~1.3 giây ánh sáng)",
       dayLength: "27.3 ngày",
       yearLength: "27.3 ngày",
       temperature: "-130°C đến 120°C",
@@ -412,6 +421,7 @@ export const SPACES_DATA: Record<string, SpaceData> = {
     stats: {
       diameter: "6,779 km (bằng 53% Trái Đất)",
       distanceFromSun: "227.9 triệu km (1.52 AU)",
+      distanceFromEarth: "54.6 - 401 triệu km (Trung bình: ~225 triệu km)",
       dayLength: "24 giờ 37 phút",
       yearLength: "687 ngày Trái Đất",
       temperature: "Trung bình -63°C (-140°C đến 20°C)",
@@ -480,6 +490,7 @@ export const SPACES_DATA: Record<string, SpaceData> = {
     stats: {
       diameter: "139,820 km (gấp 11 lần Trái Đất)",
       distanceFromSun: "778.5 triệu km (5.2 AU)",
+      distanceFromEarth: "588 - 968 triệu km (Trung bình: ~628 triệu km)",
       dayLength: "9 giờ 55 phút (quay nhanh nhất)",
       yearLength: "11.86 năm Trái Đất",
       temperature: "-110°C",
@@ -524,6 +535,7 @@ export const SPACES_DATA: Record<string, SpaceData> = {
     stats: {
       diameter: "116,460 km (gấp 9 lần Trái Đất)",
       distanceFromSun: "1.43 tỷ km (9.5 AU)",
+      distanceFromEarth: "1.2 - 1.7 tỷ km (Trung bình: ~1.4 tỷ km)",
       dayLength: "10 giờ 33 phút",
       yearLength: "29.4 năm Trái Đất",
       temperature: "-140°C",
@@ -561,47 +573,95 @@ export const SPACES_DATA: Record<string, SpaceData> = {
     }
   },
 
-  "iss-station": {
-    id: "iss-station",
-    name: "Trạm Vũ Trụ ISS",
-    nameEn: "ISS Station",
-    tagline: "Ngôi nhà chung của nhân loại giữa quỹ đạo không trọng lực",
-    category: "space_station",
-    themeColor: "#3b82f6",
-    accentGlow: "rgba(59, 130, 246, 0.4)",
+  "uranus": {
+    id: "uranus",
+    name: "Sao Thiên Vương",
+    nameEn: "Uranus",
+    tagline: "Gã khổng lồ băng xanh ngọc • Hành tinh 'lăn tròn' với trục nghiêng 98°",
+    category: "gas_giant",
+    themeColor: "#38bdf8",
+    accentGlow: "rgba(56, 189, 248, 0.4)",
     stats: {
-      diameter: "Dài 109m (bằng sân bóng đá)",
-      distanceFromSun: "Cách mặt đất 408 km",
-      dayLength: "90 phút/vòng quanh Trái Đất",
-      yearLength: "Quỹ đạo LEO",
-      temperature: "24°C (bên trong khoang)",
-      moons: "Trạm không gian quốc tế"
+      diameter: "50,724 km (gấp 4 lần Trái Đất)",
+      distanceFromSun: "2.87 tỷ km (19.2 AU)",
+      distanceFromEarth: "2.6 - 3.15 tỷ km (~19 AU • 2.6 giờ ánh sáng)",
+      dayLength: "17 giờ 14 phút (Quay ngược)",
+      yearLength: "84 năm Trái Đất",
+      temperature: "-224°C (Nơi lạnh nhất Hệ Mặt Trời)",
+      moons: "28 vệ tinh"
     },
-    overview: "Trạm Vũ Trụ Quốc Tế bay quanh Trái Đất ở vận tốc 27.600 km/h, nơi các phi hành gia làm việc và ngắm 16 lần bình minh mỗi ngày.",
+    overview: "Sao Thiên Vương là hành tinh thứ 7 tính từ Mặt Trời. Điểm kỳ lạ nhất của Sao Thiên Vương là trục tự quay nghiêng tới 97.8 độ (gần như nằm ngang trên mặt phẳng quỹ đạo), khiến hành tinh này như đang 'lăn' trên quỹ đạo quanh Mặt Trời.",
     keyFeatures: [
-      "16 lần hoàng hôn và bình minh mỗi ngày",
-      "Khoang vòm Cupola 360 độ ngắm toàn cảnh Trái Đất"
+      "Trục tự quay nghiêng 98° độc nhất vô nhị, cực Bắc và cực Nam luân phiên đón 42 năm ban ngày và 42 năm ban đêm",
+      "Khí quyển chứa khí Methane (CH4) hấp thụ ánh sáng đỏ, tạo nên sắc xanh ngọc bích tuyệt mỹ",
+      "Hành tinh băng khổng lồ (Ice Giant) với nhiệt độ tầng đối lưu lạnh nhất Hệ Mặt Trời (-224°C)"
     ],
     audioNarration: {
-      title: "Trạm ISS: Một ngày làm việc của các phi hành gia",
-      speaker: "Chỉ Huy Trạm ISS Thu Thảo",
+      title: "Sao Thiên Vương: Gã khổng lồ lăn tròn trên quỹ đạo",
+      speaker: "Hướng Dẫn Viên Thiên Văn Mỹ Duyên",
       durationSec: 46,
-      transcript: "Chào mừng các bạn lên Trạm Vũ Trụ Quốc Tế ISS. Cứ mỗi 90 phút, chúng ta lại bay hết một vòng quanh Trái Đất và ngắm nhìn bình minh rực rỡ từ khoang kính vòm Cupola huyền thoại.",
+      transcript: "Chào mừng các bạn đến với Sao Thiên Vương, hành tinh thứ 7 trong Hệ Mặt Trời. Điều kỳ thú nhất là trục của hành tinh này nghiêng tới gần 98 độ, khiến nó như đang lăn tròn quanh Mặt Trời. Mỗi cực của Sao Thiên Vương phải trải qua 42 năm chìm trong bóng đêm và 42 năm liên tục dưới ánh sáng.",
     },
     aiContext: {
-      roleName: "Alex - Chỉ Huy ISS",
-      avatarEmoji: "🛰️",
-      personaDescription: "Hướng dẫn cuộc sống phi hành gia trong không gian.",
-      coreKnowledge: ["Tập thể dục chống teo cơ", "Tái chế nước và không khí"],
-      suggestedQuestions: ["Phi hành gia tắm rửa trên vũ trụ như thế nào?"]
+      roleName: "Uranus Bot",
+      avatarEmoji: "🌀",
+      personaDescription: "Kể chuyện về trục quay nằm ngang 98 độ và hành tinh băng.",
+      coreKnowledge: ["Trục nghiêng 98 độ", "Khí quyển methane tạo màu xanh lam", "28 vệ tinh"],
+      suggestedQuestions: ["Vì sao Sao Thiên Vương lại có trục quay nằm ngang?"]
     },
     hotspots: [],
     planet3d: {
-      size: 0.6,
-      distance: 13.8,
-      speed: 0.03,
-      color: "#60a5fa",
-      textureType: "station"
+      size: 1.6,
+      distance: 34,
+      speed: 0.004,
+      color: "#38bdf8",
+      textureType: "uranus"
+    }
+  },
+
+  "neptune": {
+    id: "neptune",
+    name: "Sao Hải Vương",
+    nameEn: "Neptune",
+    tagline: "Vương quốc xanh thẳm tận cùng Hệ Mặt Trời • Nơi gió bão gầm rú 2.100 km/h",
+    category: "gas_giant",
+    themeColor: "#2563eb",
+    accentGlow: "rgba(37, 99, 235, 0.4)",
+    stats: {
+      diameter: "49,244 km (gấp 3.9 lần Trái Đất)",
+      distanceFromSun: "4.5 tỷ km (30.1 AU)",
+      distanceFromEarth: "4.3 - 4.7 tỷ km (~30 AU • 4.1 giờ ánh sáng)",
+      dayLength: "16 giờ 6 phút",
+      yearLength: "165 năm Trái Đất",
+      temperature: "-214°C",
+      moons: "16 vệ tinh (Lớn nhất là Triton)"
+    },
+    overview: "Sao Hải Vương là hành tinh thứ 8 và xa nhất tính từ Mặt Trời. Hành tinh này sở hữu những cơn gió bão mạnh nhất Hệ Mặt Trời, đạt vận tốc hơn 2.100 km/h (vượt cả tốc độ âm thanh). Sao Hải Vương mất tới 165 năm Trái Đất để hoàn thành đúng 1 vòng quay quanh Mặt Trời.",
+    keyFeatures: [
+      "Hành tinh xa nhất trong 8 hành tinh chính của Hệ Mặt Trời",
+      "Vận tốc gió bão đạt 2.100 km/h, mạnh nhất trong toàn Hệ Mặt Trời",
+      "Vệ tinh Triton quay ngược chiều quanh hành tinh và có mạch phun nitơ lỏng"
+    ],
+    audioNarration: {
+      title: "Sao Hải Vương: Cột mốc xa xôi và những cơn bão siêu thanh",
+      speaker: "Hướng Dẫn Viên Thiên Văn Hải Đăng",
+      durationSec: 46,
+      transcript: "Trước mắt các bạn là Sao Hải Vương, hành tinh xa nhất trong Hệ Mặt Trời. Ở khoảng cách 4.5 tỷ km, Mặt Trời chỉ còn như một đốm sáng nhỏ trên bầu trời. Nơi đây có màu xanh thẳm huyền bí và là nơi ngự trị của những cơn bão siêu thanh mạnh nhất vũ trụ.",
+    },
+    aiContext: {
+      roleName: "Neptune Explorer",
+      avatarEmoji: "🌊",
+      personaDescription: "Chuyên gia về ranh giới ngoài cùng của Hệ Mặt Trời.",
+      coreKnowledge: ["Hành tinh thứ 8 xa nhất", "Gió bão 2.100 km/h", "Chu kỳ quỹ đạo 165 năm"],
+      suggestedQuestions: ["Sao Hải Vương mất bao lâu để quay một vòng quanh Mặt Trời?"]
+    },
+    hotspots: [],
+    planet3d: {
+      size: 1.5,
+      distance: 40,
+      speed: 0.003,
+      color: "#2563eb",
+      textureType: "neptune"
     }
   }
 };

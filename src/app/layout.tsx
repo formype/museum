@@ -14,8 +14,8 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Solar & Museum 360° - Khám Phá Vũ Trụ & Di Sản Văn Hóa Việt Nam",
-  description: "Trải nghiệm học tập trực quan với Hệ Mặt Trời 3D, Virtual Tour 360°, Thuyết minh Giọng Nữ AI Việt Nam truyền cảm và Gia sư Thông minh.",
+  title: "Solar & Sky Lab 360° - Khám Phá Vũ Trụ & Không Gian Tri Thức",
+  description: "Trải nghiệm học tập trực quan với Hệ Mặt Trời 3D, Sky Lab 360°, Thuyết minh Giọng Nữ AI Việt Nam truyền cảm và Gia sư Thông minh.",
 };
 
 export default function RootLayout({

@@ -206,6 +206,13 @@ export default function MuseumViewer360({
     sceneRef.current.targetLat = Math.max(-80, Math.min(80, sceneRef.current.targetLat + deltaPitch));
   };
 
+  const handleNavigateToCoords = useCallback((pitch: number, yaw: number) => {
+    if (sceneRef.current) {
+      sceneRef.current.targetLat = pitch;
+      sceneRef.current.targetLon = yaw;
+    }
+  }, []);
+
   // Update sphere texture when room changes
   useEffect(() => {
     if (!sceneRef.current) return;
@@ -456,10 +463,9 @@ export default function MuseumViewer360({
         item.group.scale.set(pulse, pulse, pulse);
       });
 
-      setCoords({
-        yaw: Math.round(((state.lon % 360) + 360) % 360),
-        pitch: Math.round(state.lat),
-      });
+      const newYaw = Math.round(((state.lon % 360) + 360) % 360);
+      const newPitch = Math.round(state.lat);
+      setCoords((prev) => (prev.yaw !== newYaw || prev.pitch !== newPitch ? { yaw: newYaw, pitch: newPitch } : prev));
 
       renderer.render(scene, camera);
     };
@@ -592,14 +598,18 @@ export default function MuseumViewer360({
 
           {/* Room & Museum Badge */}
           <div className="flex items-center gap-2 bg-stone-900/90 backdrop-blur-xl border border-amber-500/40 px-3 py-2 rounded-2xl shadow-xl text-white">
-            <span className="text-xl sm:text-2xl">{currentMuseum.thumbnailEmoji}</span>
+            <img
+              src="/logo.png"
+              alt="Logo THCS Lê Anh Xuân"
+              className="w-7 h-7 sm:w-8 sm:h-8 object-contain rounded-full shrink-0 border border-amber-400/40 bg-white/10"
+            />
             <div className="overflow-hidden">
               <div className="flex items-center gap-1.5">
-                <h1 className="text-xs sm:text-sm font-bold text-amber-200 truncate max-w-[85px] xs:max-w-[120px] sm:max-w-none">
+                <h1 className="text-xs sm:text-sm font-bold text-amber-200 truncate max-w-[95px] xs:max-w-[140px] sm:max-w-none">
                   {currentRoom.name}
                 </h1>
                 <span className="hidden md:inline text-[9px] uppercase font-mono px-1.5 py-0.5 rounded-full bg-amber-500/20 text-amber-300 border border-amber-500/30">
-                  {currentMuseum.city}
+                  Sky Lab 360°
                 </span>
               </div>
               <p className="hidden md:block text-[10px] text-stone-400 truncate">{currentMuseum.name}</p>
@@ -610,10 +620,10 @@ export default function MuseumViewer360({
           <button
             onClick={() => setIsMuseumMenuOpen(true)}
             className="min-h-[44px] flex items-center gap-1.5 px-3 py-2 rounded-2xl bg-gradient-to-r from-amber-600 via-amber-500 to-yellow-600 text-stone-950 font-bold text-xs shadow-xl shadow-amber-500/30 hover:scale-105 active:scale-95 transition border border-yellow-300 shrink-0"
-            title="Chọn bảo tàng khác"
+            title="Chọn Sky Lab khác"
           >
             <Building size={15} />
-            <span className="hidden xs:inline">Đổi Bảo Tàng</span>
+            <span className="hidden xs:inline">Đổi Sky Lab</span>
           </button>
         </div>
 
@@ -977,12 +987,7 @@ export default function MuseumViewer360({
         onStop={() => setIsAutoTourActive(false)}
         title={`${currentMuseum.name} - ${currentRoom.name}`}
         steps={tourSteps}
-        onNavigateToCoords={(pitch, yaw) => {
-          if (sceneRef.current) {
-            sceneRef.current.targetLat = pitch;
-            sceneRef.current.targetLon = yaw;
-          }
-        }}
+        onNavigateToCoords={handleNavigateToCoords}
         accentColor="amber"
       />
 

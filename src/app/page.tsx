@@ -7,9 +7,6 @@ import { SPACES_DATA, SpaceData } from "@/data/spaces";
 import { INITIAL_MUSEUMS, MuseumSite } from "@/data/museums-directory";
 import { getStoredSpaces, getStoredMuseumSites } from "@/lib/spaces-storage";
 import { spaceAudio } from "@/lib/audio-synth";
-import Viewer360 from "@/components/tour/Viewer360";
-import AudioNarrator from "@/components/tour/AudioNarrator";
-import SpaceTutorChat from "@/components/ai/SpaceTutorChat";
 import MuseumViewer360 from "@/components/museum/MuseumViewer360";
 import MuseumSelectorMenu from "@/components/museum/MuseumSelectorMenu";
 import ThemeToggle from "@/components/ui/ThemeToggle";
@@ -27,23 +24,33 @@ import {
   RotateCcw,
   Landmark,
   Settings,
+  Globe,
+  X,
+  Sparkles,
+  Compass,
 } from "lucide-react";
 
-// Dynamically import Three.js Solar Canvas
+// Dynamically import Three.js Solar Canvas & 3D Planet Inspector
 const SolarSystemCanvas = dynamic(
   () => import("@/components/3d/SolarSystemCanvas"),
   { ssr: false }
 );
 
+const Planet3DInspectorModal = dynamic(
+  () => import("@/components/3d/Planet3DInspectorModal"),
+  { ssr: false }
+);
+
 export default function HomePage() {
-  // Modes: 'solar_3d' | 'tour_360' | 'museum_360'
-  const [viewMode, setViewMode] = useState<"solar_3d" | "tour_360" | "museum_360">("solar_3d");
+  // Modes: 'solar_3d' | 'museum_360'
+  const [viewMode, setViewMode] = useState<"solar_3d" | "museum_360">("solar_3d");
   const [spacesData, setSpacesData] = useState<Record<string, SpaceData>>(SPACES_DATA);
   const [museumSitesData, setMuseumSitesData] = useState<Record<string, MuseumSite>>(INITIAL_MUSEUMS);
   const [activeSpaceId, setActiveSpaceId] = useState<string>("sun");
   const [activeMuseumId, setActiveMuseumId] = useState<string>("history-museum-vn");
   const [activeMuseumRoomId, setActiveMuseumRoomId] = useState<string>("grand-hall");
   const [selectedPlanetForPreview, setSelectedPlanetForPreview] = useState<SpaceData | null>(null);
+  const [isInspectorOpen, setIsInspectorOpen] = useState<boolean>(false);
   const [simSpeed, setSimSpeed] = useState<number>(1);
   const [isChatOpen, setIsChatOpen] = useState<boolean>(false);
   const [isMuseumMenuOpen, setIsMuseumMenuOpen] = useState<boolean>(false);
@@ -66,12 +73,6 @@ export default function HomePage() {
     activeMuseum.rooms[activeMuseumRoomId] ||
     Object.values(activeMuseum.rooms)[0] ||
     INITIAL_MUSEUMS["history-museum-vn"].rooms["grand-hall"];
-
-  const handleEnter360Tour = (spaceId: string) => {
-    spaceAudio.playWarpSound();
-    setActiveSpaceId(spaceId);
-    setViewMode("tour_360");
-  };
 
   const handleEnterMuseumTour = (museumId = "history-museum-vn", roomId?: string) => {
     spaceAudio.playWarpSound();
@@ -117,8 +118,14 @@ export default function HomePage() {
           {/* 3D Canvas Background */}
           <div className="absolute inset-0 z-0">
             <SolarSystemCanvas
-              onSelectSpace={(space) => setSelectedPlanetForPreview(space)}
-              onOpenDetail={(space) => handleEnter360Tour(space.id)}
+              onSelectSpace={(space) => {
+                setSelectedPlanetForPreview(space);
+                setIsInspectorOpen(true);
+              }}
+              onOpenDetail={(space) => {
+                setSelectedPlanetForPreview(space);
+                setIsInspectorOpen(true);
+              }}
               selectedSpace={selectedPlanetForPreview}
               speed={simSpeed}
             />
@@ -127,33 +134,35 @@ export default function HomePage() {
           {/* Top Header Navbar */}
           <header className="relative z-30 pt-[max(0.75rem,env(safe-area-inset-top))] px-3 sm:px-5 py-2 sm:py-3 flex items-center justify-between pointer-events-none gap-2">
             {/* Logo & Title */}
-            <div className="flex items-center gap-2 sm:gap-3 pointer-events-auto bg-slate-900/85 backdrop-blur-xl px-2.5 sm:px-4 py-2 rounded-2xl border border-slate-700/60 shadow-xl max-w-[48vw] xs:max-w-[56vw] sm:max-w-none shrink-0">
-              <div className="w-8 h-8 sm:w-9 sm:h-9 rounded-xl bg-gradient-to-tr from-cyan-500 to-blue-600 flex items-center justify-center text-white shadow-md shadow-cyan-500/40 shrink-0">
-                <Orbit size={18} className="animate-spin [animation-duration:12s]" />
-              </div>
+            <div className="flex items-center gap-2 sm:gap-3 pointer-events-auto bg-slate-900/85 backdrop-blur-xl px-2.5 sm:px-4 py-2 rounded-2xl border border-slate-700/60 shadow-xl max-w-[58vw] xs:max-w-[65vw] sm:max-w-none shrink-0">
+              <img
+                src="/logo.png"
+                alt="Trường THCS Lê Anh Xuân"
+                className="w-8 h-8 sm:w-10 sm:h-10 object-contain rounded-full shadow-md shadow-cyan-500/20 shrink-0 border border-cyan-400/40 bg-white/10"
+              />
               <div className="overflow-hidden">
                 <h1 className="text-xs sm:text-base font-bold text-white flex items-center gap-1.5 truncate">
-                  <span className="sm:hidden">Solar 360°</span>
-                  <span className="hidden sm:inline">Solar & Museum 360°</span>
+                  <span className="sm:hidden">THCS Lê Anh Xuân</span>
+                  <span className="hidden sm:inline">THCS Lê Anh Xuân • Sky Lab 360°</span>
                   <span className="hidden md:inline-block text-[10px] px-2 py-0.5 rounded-full bg-cyan-500/20 text-cyan-300 font-mono border border-cyan-500/30">
                     EduTech VR
                   </span>
                 </h1>
                 <p className="hidden md:block text-[11px] text-slate-400 truncate">
-                  Hệ Mặt Trời 3D & Khám Phá Nhiều Bảo Tàng 360°
+                  Hệ Mặt Trời 3D & Không Gian Sky Lab 360°
                 </p>
               </div>
             </div>
 
-            {/* Quick Actions (Switch to Museum Menu, Admin CMS, Audio, Speed) */}
+            {/* Quick Actions (Switch to Sky Lab Menu, Admin CMS, Audio, Speed) */}
             <div className="flex items-center gap-1.5 sm:gap-2 pointer-events-auto shrink-0">
-              {/* Button: Mở Menu Chọn Bảo Tàng */}
+              {/* Button: Mở Menu Chọn Sky Lab */}
               <button
                 onClick={() => setIsMuseumMenuOpen(true)}
                 className="min-h-[44px] flex items-center gap-1.5 px-2.5 sm:px-3.5 py-2 rounded-2xl bg-gradient-to-r from-amber-500 via-orange-500 to-red-600 text-white font-bold text-xs sm:text-sm shadow-xl shadow-amber-500/30 hover:scale-105 active:scale-95 transition-all border border-amber-300 shrink-0"
               >
                 <Landmark size={15} />
-                <span>🏛️ Bảo Tàng</span>
+                <span>🏛️ Sky Lab</span>
               </button>
 
               {/* Button: Admin CMS */}
@@ -227,9 +236,9 @@ export default function HomePage() {
                   onClick={() => {
                     spaceAudio.playWarpSound();
                     setSelectedPlanetForPreview(p);
+                    setIsInspectorOpen(true);
                   }}
-                  onDoubleClick={() => handleEnter360Tour(p.id)}
-                  title={`${p.name} (Click đúp để mở chi tiết 360°)`}
+                  title={`${p.name} (Click để xem chi tiết 3D & thông số)`}
                   className={`flex items-center justify-between gap-3 px-3 py-2 rounded-xl text-xs font-semibold text-left transition-all border ${
                     isSelected
                       ? "bg-cyan-500/20 text-cyan-300 border-cyan-400/60 shadow-lg shadow-cyan-500/20 scale-105"
@@ -256,9 +265,9 @@ export default function HomePage() {
                   onClick={() => {
                     spaceAudio.playWarpSound();
                     setSelectedPlanetForPreview(p);
+                    setIsInspectorOpen(true);
                   }}
-                  onDoubleClick={() => handleEnter360Tour(p.id)}
-                  title={`${p.name} (Click đúp để mở chi tiết 360°)`}
+                  title={`${p.name} (Click để xem chi tiết 3D)`}
                   className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold whitespace-nowrap transition-all border shrink-0 ${
                     isSelected
                       ? "bg-cyan-500 text-white border-cyan-300 shadow-md shadow-cyan-500/40 scale-105"
@@ -290,9 +299,28 @@ export default function HomePage() {
                   </div>
                 </div>
 
-                <span className="text-[10px] uppercase font-mono px-2 py-0.5 rounded-full bg-slate-800 text-slate-300 border border-slate-700">
-                  {selectedPlanetForPreview.category.replace("_", " ")}
-                </span>
+                <div className="flex items-center gap-1">
+                  <span className="text-[10px] uppercase font-mono px-2 py-0.5 rounded-full bg-slate-800 text-slate-300 border border-slate-700">
+                    {selectedPlanetForPreview.category.replace("_", " ")}
+                  </span>
+                  <button
+                    onClick={() => setSelectedPlanetForPreview(null)}
+                    className="p-1 rounded-xl text-slate-400 hover:text-white hover:bg-slate-800 transition"
+                  >
+                    <X size={15} />
+                  </button>
+                </div>
+              </div>
+
+              {/* Prominent Earth Distance Indicator */}
+              <div className="flex items-center gap-2 px-3 py-2 rounded-xl bg-cyan-950/60 border border-cyan-500/30 text-xs mb-2">
+                <Globe size={15} className="text-cyan-400 shrink-0" />
+                <div className="overflow-hidden">
+                  <span className="text-[10px] text-cyan-400 font-bold uppercase tracking-wider block">Khoảng cách từ Trái Đất:</span>
+                  <span className="font-semibold text-white text-xs truncate block">
+                    {selectedPlanetForPreview.stats.distanceFromEarth || selectedPlanetForPreview.stats.distanceFromSun}
+                  </span>
+                </div>
               </div>
 
               <p className="text-xs text-slate-300 mb-2.5 leading-relaxed line-clamp-2">
@@ -311,52 +339,32 @@ export default function HomePage() {
                 </div>
               </div>
 
-              {/* Action Button */}
+              {/* Action Buttons */}
               <div className="flex items-center gap-2 mt-3">
                 <button
-                  onClick={() => handleEnter360Tour(selectedPlanetForPreview.id)}
-                  className="w-full min-h-[44px] flex items-center justify-center gap-2 py-2.5 rounded-2xl bg-gradient-to-r from-cyan-500 to-blue-600 text-white text-xs sm:text-sm font-bold shadow-lg shadow-cyan-500/30 hover:scale-[1.02] active:scale-95 transition"
+                  onClick={() => setIsInspectorOpen(true)}
+                  className="w-full min-h-[44px] flex items-center justify-center gap-2 py-2.5 px-4 rounded-2xl bg-gradient-to-r from-cyan-500 via-blue-600 to-indigo-600 text-white text-xs sm:text-sm font-bold shadow-lg shadow-cyan-500/30 hover:scale-[1.02] active:scale-95 transition"
+                  title="Mở xem mô hình 3D thực tế, trục nghiêng & ngày đêm"
                 >
-                  <Eye size={16} />
-                  <span>Vào Khám Phá 360° VR</span>
+                  <Sparkles size={16} className="text-cyan-200" />
+                  <span>Xem Chi Tiết 3D & Ngày Đêm</span>
                 </button>
               </div>
             </div>
+          )}
+
+          {/* Detailed 3D Planet Inspector Modal with OrbitControls, Zoom & Realistic Textures */}
+          {isInspectorOpen && selectedPlanetForPreview && (
+            <Planet3DInspectorModal
+              planet={selectedPlanetForPreview}
+              onClose={() => setIsInspectorOpen(false)}
+            />
           )}
         </div>
       )}
 
       {/* ========================================================================= */}
-      {/* MODE 2: IMMERSIVE 360 VIRTUAL TOUR VIEW (SPACE)                           */}
-      {/* ========================================================================= */}
-      {viewMode === "tour_360" && (
-        <div className="relative w-full h-full">
-          {/* Synchronized Audio Narration Player & Subtitles */}
-          <AudioNarrator
-            narration={activeSpace.audioNarration}
-            spaceName={activeSpace.name}
-          />
-
-          {/* 360 Virtual Tour Panoramic Viewer */}
-          <Viewer360
-            space={activeSpace}
-            onNavigateSpace={(newSpaceId) => setActiveSpaceId(newSpaceId)}
-            onOpenChat={() => setIsChatOpen(true)}
-            onBackToMain={handleBackTo3D}
-            onOpenMuseumMenu={() => setIsMuseumMenuOpen(true)}
-          />
-
-          {/* AI Chatbot Drawer */}
-          <SpaceTutorChat
-            space={activeSpace}
-            isOpen={isChatOpen}
-            onClose={() => setIsChatOpen(false)}
-          />
-        </div>
-      )}
-
-      {/* ========================================================================= */}
-      {/* MODE 3: GOOGLE STREET VIEW MULTI-MUSEUM 360 TOUR                          */}
+      {/* 360 VIRTUAL TOUR VIEW (CHỈ DÀNH CHO BẢO TÀNG / SKY LAB)                    */}
       {/* ========================================================================= */}
       {viewMode === "museum_360" && (
         <div className="relative w-full h-full">

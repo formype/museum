@@ -51,43 +51,9 @@ class SpaceAudioManager {
     return this.useOnlineAiVoice;
   }
 
-  // Play realistic deep space cosmic ambient drone using Web Audio API
+  // Ambient drone disabled to prevent low-frequency buzzing noise on speakers/earbuds
   public startAmbientSound() {
-    if (this.isAmbientPlaying || typeof window === "undefined") return;
-    try {
-      const AudioCtxClass =
-        window.AudioContext ||
-        (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
-      if (!AudioCtxClass) return;
-      this.audioCtx = new AudioCtxClass();
-
-      const osc1 = this.audioCtx.createOscillator();
-      const osc2 = this.audioCtx.createOscillator();
-      const biquadFilter = this.audioCtx.createBiquadFilter();
-
-      this.ambientGain = this.audioCtx.createGain();
-      this.ambientGain.gain.setValueAtTime(0.04, this.audioCtx.currentTime);
-
-      osc1.type = "sine";
-      osc1.frequency.setValueAtTime(55, this.audioCtx.currentTime);
-
-      osc2.type = "sine";
-      osc2.frequency.setValueAtTime(110, this.audioCtx.currentTime);
-
-      biquadFilter.type = "lowpass";
-      biquadFilter.frequency.setValueAtTime(180, this.audioCtx.currentTime);
-
-      osc1.connect(biquadFilter);
-      osc2.connect(biquadFilter);
-      biquadFilter.connect(this.ambientGain);
-      this.ambientGain.connect(this.audioCtx.destination);
-
-      osc1.start();
-      osc2.start();
-      this.isAmbientPlaying = true;
-    } catch {
-      // Audio context might be restricted before user gesture
-    }
+    this.isAmbientPlaying = false;
   }
 
   public stopAmbientSound() {
@@ -126,7 +92,7 @@ class SpaceAudioManager {
     // Try Natural AI Vietnamese Female Voice endpoint first
     if (this.useOnlineAiVoice) {
       try {
-        const audioUrl = `/api/tts?text=${encodeURIComponent(cleanText)}`;
+        const audioUrl = `/api/tts?text=${encodeURIComponent(cleanText)}&voice=vi-VN-HoaiMyNeural`;
         const audio = new Audio(audioUrl);
         this.currentAudioElement = audio;
 

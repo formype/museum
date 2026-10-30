@@ -138,6 +138,13 @@ export default function Viewer360({
     sceneRef.current.targetLat = Math.max(-80, Math.min(80, sceneRef.current.targetLat + deltaPitch));
   };
 
+  const handleNavigateToCoords = useCallback((pitch: number, yaw: number) => {
+    if (sceneRef.current) {
+      sceneRef.current.targetLat = pitch;
+      sceneRef.current.targetLon = yaw;
+    }
+  }, []);
+
   // Convert (pitch, yaw) in degrees to 3D sphere Cartesian coordinates (Radius 450)
   const latLonToVector3 = useCallback((pitch: number, yaw: number, radius = 450) => {
     const phi = THREE.MathUtils.degToRad(90 - pitch);
@@ -363,10 +370,9 @@ export default function Viewer360({
         h.group.scale.set(pulse, pulse, pulse);
       });
 
-      setCoords({
-        yaw: Math.round(((state.lon % 360) + 360) % 360),
-        pitch: Math.round(state.lat),
-      });
+      const newYaw = Math.round(((state.lon % 360) + 360) % 360);
+      const newPitch = Math.round(state.lat);
+      setCoords((prev) => (prev.yaw !== newYaw || prev.pitch !== newPitch ? { yaw: newYaw, pitch: newPitch } : prev));
 
       renderer.render(scene, camera);
     };
@@ -439,14 +445,18 @@ export default function Viewer360({
 
           {/* Space Info Badge */}
           <div className="flex items-center gap-2 bg-slate-900/90 backdrop-blur-xl border border-cyan-500/40 px-3 py-2 rounded-2xl shadow-xl text-white">
-            <span className="text-xl sm:text-2xl">{space.aiContext.avatarEmoji}</span>
+            <img
+              src="/logo.png"
+              alt="Logo THCS Lê Anh Xuân"
+              className="w-7 h-7 sm:w-8 sm:h-8 object-contain rounded-full shrink-0 border border-cyan-400/40 bg-white/10"
+            />
             <div className="overflow-hidden">
               <div className="flex items-center gap-1.5">
                 <h1 className="text-xs sm:text-sm font-bold text-white truncate max-w-[85px] xs:max-w-[120px] sm:max-w-none">
                   {space.name}
                 </h1>
                 <span className="hidden md:inline text-[9px] uppercase font-mono px-1.5 py-0.5 rounded-full bg-cyan-500/20 text-cyan-300 border border-cyan-500/30">
-                  360° VR
+                  Sky Lab 360°
                 </span>
               </div>
               <p className="hidden md:block text-[10px] text-slate-400 truncate">{space.nameEn}</p>
@@ -543,12 +553,7 @@ export default function Viewer360({
         onStop={() => setIsAutoTourActive(false)}
         title={`Khám Phá Toàn Cảnh: ${space.name}`}
         steps={tourSteps}
-        onNavigateToCoords={(pitch, yaw) => {
-          if (sceneRef.current) {
-            sceneRef.current.targetLat = pitch;
-            sceneRef.current.targetLon = yaw;
-          }
-        }}
+        onNavigateToCoords={handleNavigateToCoords}
         accentColor="cyan"
       />
 

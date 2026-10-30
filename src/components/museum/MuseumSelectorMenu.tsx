@@ -61,15 +61,17 @@ export default function MuseumSelectorMenu({
         {/* Header */}
         <div className="p-4 sm:p-5 border-b border-stone-800 flex items-center justify-between bg-stone-950/80">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-2xl bg-amber-500/20 border border-amber-400/40 flex items-center justify-center text-2xl shadow-inner">
-              🏛️
-            </div>
+            <img
+              src="/logo.png"
+              alt="Logo THCS Lê Anh Xuân"
+              className="w-11 h-11 object-contain rounded-full shrink-0 border border-amber-400/40 shadow-md bg-white/10"
+            />
             <div>
               <h2 className="text-base sm:text-lg font-bold text-amber-100 flex items-center gap-2">
-                Chọn Bảo Tàng & Địa Điểm Tham Quan 360°
+                Chọn Không Gian Sky Lab 360°
               </h2>
               <p className="text-xs text-stone-400">
-                Khám phá các bảo tàng lịch sử, văn hóa & danh lam di tích Việt Nam
+                Trường THCS Lê Anh Xuân • Khám phá tri thức & không gian 360°
               </p>
             </div>
           </div>
