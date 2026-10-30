@@ -48,7 +48,7 @@ export default function AdminPage() {
   const [selectedSpaceId, setSelectedSpaceId] = useState<string>("sun");
   const [selectedMuseumId, setSelectedMuseumId] = useState<string>("history-museum-vn");
   const [selectedRoomId, setSelectedRoomId] = useState<string>("grand-hall");
-  const [activeTab, setActiveTab] = useState<"general" | "panorama" | "audio" | "faq" | "hotspots">("panorama");
+  const [activeTab, setActiveTab] = useState<"general" | "panorama" | "audio" | "faq" | "hotspots">("general");
   const [toastMessage, setToastMessage] = useState<string | null>(null);
   const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState<boolean>(false);
   const [pickedCoords, setPickedCoords] = useState<{ pitch: number; yaw: number } | null>(null);
@@ -493,6 +493,7 @@ export default function AdminPage() {
               onClick={() => {
                 setAdminSection("solar");
                 setSelectedSpaceId(Object.keys(spaces)[0] || "sun");
+                if (activeTab === "panorama") setActiveTab("general");
               }}
               className={`flex items-center justify-center gap-1.5 py-2 rounded-xl text-xs font-bold transition ${
                 adminSection === "solar"
@@ -518,7 +519,7 @@ export default function AdminPage() {
               }`}
             >
               <Landmark size={14} />
-              <span>Các Bảo Tàng</span>
+              <span>Sky Lab / Bảo Tàng</span>
             </button>
           </div>
 
@@ -604,57 +605,63 @@ export default function AdminPage() {
         <main className="flex-1 flex flex-col bg-slate-950 overflow-y-auto p-4 sm:p-6">
           {/* Sub Navigation Tabs */}
           <div className="flex items-center gap-1.5 border-b border-slate-800 pb-2 mb-4 overflow-x-auto no-scrollbar">
-            <button
-              onClick={() => setActiveTab("panorama")}
-              className={`min-h-[38px] flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl text-xs font-bold whitespace-nowrap transition ${
-                activeTab === "panorama" ? "bg-amber-500 text-stone-950 shadow-md" : "text-slate-400 hover:text-white"
-              }`}
-            >
-              <Crosshair size={14} />
-              <span>1. Chấm Tọa Độ 360° Trực Quan</span>
-            </button>
+            {/* Chỉ hiện Tab Ảnh 360 & Tọa độ khi đang ở phần Sky Lab / Bảo Tàng */}
+            {adminSection === "museums" && (
+              <button
+                onClick={() => setActiveTab("panorama")}
+                className={`min-h-[38px] flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl text-xs font-bold whitespace-nowrap transition ${
+                  activeTab === "panorama" ? "bg-amber-500 text-stone-950 shadow-md" : "text-slate-400 hover:text-white"
+                }`}
+              >
+                <Crosshair size={14} />
+                <span>1. Chấm Tọa Độ 360° Trực Quan</span>
+              </button>
+            )}
+
             <button
               onClick={() => setActiveTab("general")}
-              className={`min-h-[38px] flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold whitespace-nowrap transition ${
+              className={`min-h-[38px] flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl text-xs font-bold whitespace-nowrap transition ${
                 activeTab === "general" ? "bg-cyan-500 text-white" : "text-slate-400 hover:text-white"
               }`}
             >
               <FileText size={13} />
-              <span>2. Thông Tin</span>
+              <span>{adminSection === "solar" ? "1. Kiến Thức & Thông Số" : "2. Thông Tin"}</span>
             </button>
             <button
               onClick={() => setActiveTab("audio")}
-              className={`min-h-[38px] flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold whitespace-nowrap transition ${
+              className={`min-h-[38px] flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl text-xs font-bold whitespace-nowrap transition ${
                 activeTab === "audio" ? "bg-cyan-500 text-white" : "text-slate-400 hover:text-white"
               }`}
             >
               <Volume2 size={13} />
-              <span>3. Thuyết Trình</span>
+              <span>{adminSection === "solar" ? "2. Thuyết Minh Giọng AI" : "3. Thuyết Trình"}</span>
             </button>
             <button
               onClick={() => setActiveTab("faq")}
-              className={`min-h-[38px] flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold whitespace-nowrap transition ${
+              className={`min-h-[38px] flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl text-xs font-bold whitespace-nowrap transition ${
                 activeTab === "faq" ? "bg-cyan-500 text-white" : "text-slate-400 hover:text-white"
               }`}
             >
               <MessageSquare size={13} />
-              <span>4. FAQ & AI</span>
+              <span>{adminSection === "solar" ? "3. Câu Hỏi & Trợ Lý AI" : "4. FAQ & AI"}</span>
             </button>
-            <button
-              onClick={() => setActiveTab("hotspots")}
-              className={`min-h-[38px] flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold whitespace-nowrap transition ${
-                activeTab === "hotspots" ? "bg-cyan-500 text-white" : "text-slate-400 hover:text-white"
-              }`}
-            >
-              <BookOpen size={13} />
-              <span>5. Danh Sách Điểm Thuyết Minh</span>
-            </button>
+            {adminSection === "museums" && (
+              <button
+                onClick={() => setActiveTab("hotspots")}
+                className={`min-h-[38px] flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl text-xs font-bold whitespace-nowrap transition ${
+                  activeTab === "hotspots" ? "bg-cyan-500 text-white" : "text-slate-400 hover:text-white"
+                }`}
+              >
+                <BookOpen size={13} />
+                <span>5. Danh Sách Hiện Vật</span>
+              </button>
+            )}
           </div>
 
           {/* ========================================================================= */}
-          {/* TAB 1: BỘ CHẤM TỌA ĐỘ 360 ĐỘ TRỰC QUAN (VISUAL 360 COORDINATE PICKER)     */}
+          {/* TAB 1: BỘ CHẤM TỌA ĐỘ 360 ĐỘ TRỰC QUAN (CHỈ DÀNH CHO SKY LAB / BẢO TÀNG)  */}
           {/* ========================================================================= */}
-          {activeTab === "panorama" && (
+          {activeTab === "panorama" && adminSection === "museums" && (
             <div className="max-w-4xl w-full mx-auto space-y-4 animate-fade-in">
               <div className="p-4 rounded-2xl bg-amber-950/20 border border-amber-500/30">
                 <h3 className="text-sm sm:text-base font-bold text-amber-200 flex items-center gap-2">
@@ -669,24 +676,17 @@ export default function AdminPage() {
               {/* Interactive Visual 360 Coordinate Picker Component */}
               <Visual360CoordinatePicker
                 bgType={currentRoom?.bgType || "grand_hall"}
-                isSpaceMode={adminSection === "solar"}
-                spaceId={currentSpace?.id}
-                customPanoramaUrl={adminSection === "solar" ? currentSpace?.customPanorama : currentRoom?.customPanorama}
+                isSpaceMode={false}
+                spaceId={undefined}
+                customPanoramaUrl={currentRoom?.customPanorama}
                 existingMarkers={
-                  adminSection === "solar" && currentSpace
-                    ? currentSpace.hotspots.map((h) => ({
-                        id: h.id,
-                        name: h.title,
-                        pitch: h.pitch,
-                        yaw: h.yaw,
-                      }))
-                    : (currentRoom?.artifacts || []).map((a) => ({
-                        id: a.id,
-                        name: a.name,
-                        pitch: a.pitch,
-                        yaw: a.yaw,
-                        emoji: a.thumbnailEmoji,
-                      }))
+                  (currentRoom?.artifacts || []).map((a) => ({
+                    id: a.id,
+                    name: a.name,
+                    pitch: a.pitch,
+                    yaw: a.yaw,
+                    emoji: a.thumbnailEmoji,
+                  }))
                 }
                 onAddMarkerAtCoordinate={handleAddMarkerFromCoordinates}
               />
@@ -701,7 +701,7 @@ export default function AdminPage() {
                       </div>
                       <div>
                         <h4 className="text-sm font-bold text-amber-200">
-                          Điền Thông Tin & Tải Ảnh Cho Điểm Tọa Độ Vừa Chọn
+                          Điền Thông Tin & Tải Ảnh Cho Cổ Vật / Điểm Trưng Bày
                         </h4>
                         <p className="text-[11px] font-mono text-cyan-400">
                           Tọa độ: Pitch {pickedCoords.pitch}° | Yaw {pickedCoords.yaw}°
@@ -719,7 +719,7 @@ export default function AdminPage() {
                   <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                     <div className="sm:col-span-2">
                       <label className="block text-[11px] font-semibold text-slate-300 mb-1">
-                        {adminSection === "solar" ? "Tiêu Đề Điểm Thuyết Minh:" : "Tên Cổ Vật / Hiện Vật:"}
+                        Tên Cổ Vật / Hiện Vật:
                       </label>
                       <input
                         type="text"
@@ -731,17 +731,13 @@ export default function AdminPage() {
                     </div>
                     <div>
                       <label className="block text-[11px] font-semibold text-slate-300 mb-1">
-                        {adminSection === "solar" ? "Huy Hiệu (Badge):" : "Niên Đại / Thời Kỳ:"}
+                        Niên Đại / Thời Kỳ:
                       </label>
                       <input
                         type="text"
-                        value={adminSection === "solar" ? activeCreationData.badge : activeCreationData.era}
-                        onChange={(e) =>
-                          adminSection === "solar"
-                            ? setActiveCreationData({ ...activeCreationData, badge: e.target.value })
-                            : setActiveCreationData({ ...activeCreationData, era: e.target.value })
-                        }
-                        placeholder={adminSection === "solar" ? "Vd: Khám phá" : "Vd: Thế kỷ X..."}
+                        value={activeCreationData.era}
+                        onChange={(e) => setActiveCreationData({ ...activeCreationData, era: e.target.value })}
+                        placeholder="Vd: Thế kỷ X..."
                         className="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-amber-400"
                       />
                     </div>
@@ -761,7 +757,7 @@ export default function AdminPage() {
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                     <div>
                       <label className="block text-[11px] font-semibold text-slate-300 mb-1">
-                        {adminSection === "solar" ? "Kiến Thức Khoa Học (Fact):" : "Câu Chuyện Lịch Sử Chi Tiết:"}
+                        Câu Chuyện Lịch Sử Chi Tiết:
                       </label>
                       <textarea
                         rows={2}
@@ -789,7 +785,7 @@ export default function AdminPage() {
                     value={activeCreationData.image}
                     onChange={(url) => setActiveCreationData({ ...activeCreationData, image: url })}
                     accentColor="amber"
-                    sampleCategory={adminSection === "solar" ? "solar" : "museum"}
+                    sampleCategory="museum"
                   />
 
                   <div className="flex items-center justify-end gap-2 pt-2 border-t border-slate-800">
@@ -810,23 +806,13 @@ export default function AdminPage() {
                 </div>
               )}
 
-              {/* Upload Panorama File Section */}
+              {/* Upload Panorama File Section (Chỉ dành cho phòng bảo tàng) */}
               <div className="space-y-2">
                 <ImageUploader
-                  label={
-                    adminSection === "solar"
-                      ? `Ảnh Toàn Cảnh Panorama 360° Cho ${currentSpace?.name || "Hành Tinh"}:`
-                      : `Ảnh Toàn Cảnh Panorama 360° Cho ${currentRoom?.name || "Gian Phòng"}:`
-                  }
-                  value={adminSection === "solar" ? currentSpace?.customPanorama : currentRoom?.customPanorama}
+                  label={`Ảnh Toàn Cảnh Panorama 360° Cho ${currentRoom?.name || "Gian Phòng"}:`}
+                  value={currentRoom?.customPanorama}
                   onChange={(url) => {
-                    if (adminSection === "solar" && currentSpace) {
-                      setSpaces({
-                        ...spaces,
-                        [selectedSpaceId]: { ...currentSpace, customPanorama: url },
-                      });
-                      showToast("Đã cập nhật ảnh 360° cho " + currentSpace.name + ". Hãy bấm 'Lưu Thay Đổi'!");
-                    } else if (adminSection === "museums" && currentMuseum && currentRoom) {
+                    if (currentMuseum && currentRoom) {
                       const nextRooms = { ...currentMuseum.rooms };
                       nextRooms[selectedRoomId] = { ...currentRoom, customPanorama: url };
                       setMuseums({
@@ -836,8 +822,8 @@ export default function AdminPage() {
                       showToast("Đã cập nhật ảnh 360° cho " + currentRoom.name + ". Hãy bấm 'Lưu Thay Đổi'!");
                     }
                   }}
-                  accentColor={adminSection === "solar" ? "cyan" : "amber"}
-                  sampleCategory={adminSection === "solar" ? "solar" : "museum"}
+                  accentColor="amber"
+                  sampleCategory="museum"
                   isPanorama={true}
                 />
               </div>
@@ -851,7 +837,7 @@ export default function AdminPage() {
                 <div className="space-y-4 bg-slate-900/60 border border-slate-800 p-4 sm:p-5 rounded-2xl">
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                     <div>
-                      <label className="block text-xs font-bold text-slate-300 mb-1">Tên Hành Tinh</label>
+                      <label className="block text-xs font-bold text-slate-300 mb-1">Tên Hành Tinh / Thiên Thể</label>
                       <input
                         type="text"
                         value={currentSpace.name}
@@ -878,6 +864,148 @@ export default function AdminPage() {
                         className="w-full bg-slate-800 border border-slate-700 rounded-xl px-3 py-2 text-sm text-white"
                       />
                     </div>
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-bold text-slate-300 mb-1">Khẩu Hiệu / Tagline</label>
+                    <input
+                      type="text"
+                      value={currentSpace.tagline}
+                      onChange={(e) =>
+                        setSpaces({
+                          ...spaces,
+                          [selectedSpaceId]: { ...currentSpace, tagline: e.target.value },
+                        })
+                      }
+                      className="w-full bg-slate-800 border border-slate-700 rounded-xl px-3 py-2 text-sm text-white"
+                    />
+                  </div>
+
+                  {/* Khoảng cách từ Trái Đất & Mặt Trời */}
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2 border-t border-slate-800">
+                    <div>
+                      <label className="block text-xs font-bold text-cyan-400 mb-1">Khoảng Cách Từ Trái Đất</label>
+                      <input
+                        type="text"
+                        value={currentSpace.stats.distanceFromEarth || ""}
+                        placeholder="Vd: 54.6 - 401 triệu km (~225 triệu km)"
+                        onChange={(e) =>
+                          setSpaces({
+                            ...spaces,
+                            [selectedSpaceId]: {
+                              ...currentSpace,
+                              stats: { ...currentSpace.stats, distanceFromEarth: e.target.value },
+                            },
+                          })
+                        }
+                        className="w-full bg-slate-800 border border-slate-700 rounded-xl px-3 py-2 text-sm text-white"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-xs font-bold text-slate-300 mb-1">Khoảng Cách Tới Mặt Trời</label>
+                      <input
+                        type="text"
+                        value={currentSpace.stats.distanceFromSun}
+                        onChange={(e) =>
+                          setSpaces({
+                            ...spaces,
+                            [selectedSpaceId]: {
+                              ...currentSpace,
+                              stats: { ...currentSpace.stats, distanceFromSun: e.target.value },
+                            },
+                          })
+                        }
+                        className="w-full bg-slate-800 border border-slate-700 rounded-xl px-3 py-2 text-sm text-white"
+                      />
+                    </div>
+                  </div>
+
+                  {/* Các thông số thiên văn & địa lý */}
+                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 pt-2 border-t border-slate-800">
+                    <div>
+                      <label className="block text-[11px] font-bold text-slate-300 mb-1">Đường Kính</label>
+                      <input
+                        type="text"
+                        value={currentSpace.stats.diameter}
+                        onChange={(e) =>
+                          setSpaces({
+                            ...spaces,
+                            [selectedSpaceId]: {
+                              ...currentSpace,
+                              stats: { ...currentSpace.stats, diameter: e.target.value },
+                            },
+                          })
+                        }
+                        className="w-full bg-slate-800 border border-slate-700 rounded-xl px-2.5 py-1.5 text-xs text-white"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-[11px] font-bold text-slate-300 mb-1">Nhiệt Độ Bề Mặt</label>
+                      <input
+                        type="text"
+                        value={currentSpace.stats.temperature}
+                        onChange={(e) =>
+                          setSpaces({
+                            ...spaces,
+                            [selectedSpaceId]: {
+                              ...currentSpace,
+                              stats: { ...currentSpace.stats, temperature: e.target.value },
+                            },
+                          })
+                        }
+                        className="w-full bg-slate-800 border border-slate-700 rounded-xl px-2.5 py-1.5 text-xs text-white"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-[11px] font-bold text-slate-300 mb-1">Độ Dài Ngày</label>
+                      <input
+                        type="text"
+                        value={currentSpace.stats.dayLength}
+                        onChange={(e) =>
+                          setSpaces({
+                            ...spaces,
+                            [selectedSpaceId]: {
+                              ...currentSpace,
+                              stats: { ...currentSpace.stats, dayLength: e.target.value },
+                            },
+                          })
+                        }
+                        className="w-full bg-slate-800 border border-slate-700 rounded-xl px-2.5 py-1.5 text-xs text-white"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-[11px] font-bold text-slate-300 mb-1">Chu Kỳ Năm</label>
+                      <input
+                        type="text"
+                        value={currentSpace.stats.yearLength}
+                        onChange={(e) =>
+                          setSpaces({
+                            ...spaces,
+                            [selectedSpaceId]: {
+                              ...currentSpace,
+                              stats: { ...currentSpace.stats, yearLength: e.target.value },
+                            },
+                          })
+                        }
+                        className="w-full bg-slate-800 border border-slate-700 rounded-xl px-2.5 py-1.5 text-xs text-white"
+                      />
+                    </div>
+                  </div>
+
+                  {/* Mô tả chi tiết tổng quan */}
+                  <div className="pt-2 border-t border-slate-800">
+                    <label className="block text-xs font-bold text-slate-300 mb-1">Mô Tả Chi Tiết / Kiến Thức Giáo Khoa</label>
+                    <textarea
+                      rows={5}
+                      value={currentSpace.overview}
+                      onChange={(e) =>
+                        setSpaces({
+                          ...spaces,
+                          [selectedSpaceId]: { ...currentSpace, overview: e.target.value },
+                        })
+                      }
+                      className="w-full bg-slate-800 border border-slate-700 rounded-xl px-3 py-2 text-sm text-white leading-relaxed"
+                    />
                   </div>
                 </div>
               ) : adminSection === "museums" && currentMuseum ? (
@@ -1283,15 +1411,15 @@ export default function AdminPage() {
             </div>
           )}
 
-          {/* TAB 5: DANH SÁCH ĐIỂM THUYẾT MINH & HIỆN VẬT */}
-          {activeTab === "hotspots" && (
+          {/* TAB 5: DANH SÁCH HIỆN VẬT (CHỈ DÀNH CHO SKY LAB / BẢO TÀNG) */}
+          {activeTab === "hotspots" && adminSection === "museums" && currentRoom && (
             <div className="max-w-4xl w-full mx-auto space-y-4">
               <div className="space-y-4 bg-slate-900/60 border border-slate-800 p-4 sm:p-5 rounded-2xl">
                 <div className="flex items-center justify-between">
                   <div>
                     <h3 className="text-sm font-bold text-white flex items-center gap-2">
                       <BookOpen size={16} className="text-cyan-400" />
-                      Chỉnh Sửa Chi Tiết & Tải Ảnh Điểm Thuyết Minh / Cổ Vật
+                      Chỉnh Sửa Chi Tiết & Tải Ảnh Cổ Vật / Điểm Trưng Bày
                     </h3>
                     <p className="text-xs text-slate-400 mt-0.5">
                       Cập nhật tiêu đề, nội dung lịch sử, kiến thức và tải ảnh đính kèm (hoặc dán URL ảnh) hiển thị khi bấm vào điểm neo 360°.
@@ -1299,169 +1427,13 @@ export default function AdminPage() {
                   </div>
                 </div>
 
-                {adminSection === "solar" && currentSpace ? (
-                  <div className="space-y-4">
-                    {currentSpace.hotspots.length === 0 && (
-                      <div className="text-center py-6 text-xs text-slate-500 bg-slate-950/40 rounded-xl border border-dashed border-slate-800">
-                        Chưa có điểm thuyết minh nào. Hãy qua tab &quot;1. Chấm Tọa Độ 360° Trực Quan&quot; để tạo điểm mới.
-                      </div>
-                    )}
-                    {currentSpace.hotspots.map((spot, idx) => (
-                      <div
-                        key={`sp-edit-${spot.id || idx}`}
-                        className="p-4 rounded-2xl bg-slate-950/80 border border-slate-800 space-y-3.5 relative group hover:border-cyan-500/40 transition"
-                      >
-                        <div className="flex items-center justify-between gap-2 border-b border-slate-800 pb-2.5">
-                          <div className="flex items-center gap-2">
-                            <span className="w-6 h-6 rounded-lg bg-cyan-500/20 text-cyan-400 text-xs font-bold flex items-center justify-center">
-                              #{idx + 1}
-                            </span>
-                            <span className="text-xs font-bold text-cyan-300">
-                              {spot.title || "Điểm thuyết minh"}
-                            </span>
-                            <span className="text-[10px] text-slate-400 font-mono bg-slate-900 px-2 py-0.5 rounded-full border border-slate-700">
-                              Pitch: {spot.pitch}° | Yaw: {spot.yaw}°
-                            </span>
-                          </div>
-                          <button
-                            onClick={() => {
-                              const next = currentSpace.hotspots.filter((_, i) => i !== idx);
-                              setSpaces({
-                                ...spaces,
-                                [selectedSpaceId]: { ...currentSpace, hotspots: next },
-                              });
-                              showToast("Đã xóa điểm thuyết minh!");
-                            }}
-                            className="p-1.5 rounded-lg text-red-400 hover:bg-red-950/50 hover:text-red-300 transition"
-                            title="Xóa điểm này"
-                          >
-                            <Trash2 size={15} />
-                          </button>
-                        </div>
-
-                        {/* Tên & Huy hiệu & Thể loại */}
-                        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                          <div className="sm:col-span-2">
-                            <label className="block text-[11px] font-semibold text-slate-400 mb-1">Tiêu đề điểm neo:</label>
-                            <input
-                              type="text"
-                              value={spot.title}
-                              onChange={(e) => {
-                                const next = [...currentSpace.hotspots];
-                                next[idx] = { ...next[idx], title: e.target.value };
-                                setSpaces({
-                                  ...spaces,
-                                  [selectedSpaceId]: { ...currentSpace, hotspots: next },
-                                });
-                              }}
-                              className="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-cyan-400"
-                            />
-                          </div>
-                          <div>
-                            <label className="block text-[11px] font-semibold text-slate-400 mb-1">Huy hiệu (Badge):</label>
-                            <input
-                              type="text"
-                              placeholder="Vd: 15 Triệu °C, Khám phá..."
-                              value={spot.badge || ""}
-                              onChange={(e) => {
-                                const next = [...currentSpace.hotspots];
-                                next[idx] = { ...next[idx], badge: e.target.value };
-                                setSpaces({
-                                  ...spaces,
-                                  [selectedSpaceId]: { ...currentSpace, hotspots: next },
-                                });
-                              }}
-                              className="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-cyan-400"
-                            />
-                          </div>
-                        </div>
-
-                        {/* Mô tả & Thông tin kiến thức */}
-                        <div className="space-y-2">
-                          <div>
-                            <label className="block text-[11px] font-semibold text-slate-400 mb-1">Mô tả tổng quan:</label>
-                            <textarea
-                              rows={2}
-                              value={spot.description}
-                              onChange={(e) => {
-                                const next = [...currentSpace.hotspots];
-                                next[idx] = { ...next[idx], description: e.target.value };
-                                setSpaces({
-                                  ...spaces,
-                                  [selectedSpaceId]: { ...currentSpace, hotspots: next },
-                                });
-                              }}
-                              className="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-cyan-400 leading-relaxed"
-                            />
-                          </div>
-                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                            <div>
-                              <label className="block text-[11px] font-semibold text-slate-400 mb-1">Kiến thức chi tiết (Fact):</label>
-                              <textarea
-                                rows={2}
-                                value={spot.details?.fact || ""}
-                                onChange={(e) => {
-                                  const next = [...currentSpace.hotspots];
-                                  next[idx] = {
-                                    ...next[idx],
-                                    details: { ...(next[idx].details || { fact: "" }), fact: e.target.value },
-                                  };
-                                  setSpaces({
-                                    ...spaces,
-                                    [selectedSpaceId]: { ...currentSpace, hotspots: next },
-                                  });
-                                }}
-                                className="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-cyan-400 leading-relaxed"
-                              />
-                            </div>
-                            <div>
-                              <label className="block text-[11px] font-semibold text-slate-400 mb-1">Bí ẩn thú vị (Fun Fact):</label>
-                              <textarea
-                                rows={2}
-                                value={spot.details?.funFact || ""}
-                                onChange={(e) => {
-                                  const next = [...currentSpace.hotspots];
-                                  next[idx] = {
-                                    ...next[idx],
-                                    details: { ...(next[idx].details || { fact: "" }), funFact: e.target.value },
-                                  };
-                                  setSpaces({
-                                    ...spaces,
-                                    [selectedSpaceId]: { ...currentSpace, hotspots: next },
-                                  });
-                                }}
-                                className="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-cyan-400 leading-relaxed"
-                              />
-                            </div>
-                          </div>
-                        </div>
-
-                        {/* Hình ảnh đính kèm (Upload hoặc URL với bộ nén ảnh tự động) */}
-                        <ImageUploader
-                          label="Hình Ảnh Tư Liệu Đính Kèm Của Điểm Này:"
-                          value={spot.image}
-                          onChange={(url) => {
-                            const next = [...currentSpace.hotspots];
-                            next[idx] = { ...next[idx], image: url };
-                            setSpaces({
-                              ...spaces,
-                              [selectedSpaceId]: { ...currentSpace, hotspots: next },
-                            });
-                          }}
-                          accentColor="cyan"
-                          sampleCategory="solar"
-                        />
-                      </div>
-                    ))}
-                  </div>
-                ) : adminSection === "museums" && currentRoom ? (
-                  <div className="space-y-4">
-                    {(currentRoom.artifacts || []).length === 0 && (
-                      <div className="text-center py-6 text-xs text-slate-500 bg-slate-950/40 rounded-xl border border-dashed border-slate-800">
-                        Chưa có cổ vật nào. Hãy qua tab &quot;1. Chấm Tọa Độ 360° Trực Quan&quot; để định vị cổ vật mới.
-                      </div>
-                    )}
-                    {(currentRoom.artifacts || []).map((art, idx) => (
+                <div className="space-y-4">
+                  {(currentRoom.artifacts || []).length === 0 && (
+                    <div className="text-center py-6 text-xs text-slate-500 bg-slate-950/40 rounded-xl border border-dashed border-slate-800">
+                      Chưa có cổ vật nào. Hãy qua tab &quot;1. Chấm Tọa Độ 360° Trực Quan&quot; để định vị cổ vật mới.
+                    </div>
+                  )}
+                  {(currentRoom.artifacts || []).map((art, idx) => (
                       <div
                         key={`art-edit-${art.id || idx}`}
                         className="p-4 rounded-2xl bg-stone-950/80 border border-stone-800 space-y-3.5 relative group hover:border-amber-500/40 transition"
@@ -1653,8 +1625,7 @@ export default function AdminPage() {
                         />
                       </div>
                     ))}
-                  </div>
-                ) : null}
+                </div>
               </div>
             </div>
           )}

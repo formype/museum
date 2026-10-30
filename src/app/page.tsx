@@ -28,6 +28,9 @@ import {
   X,
   Sparkles,
   Compass,
+  Menu,
+  MoreVertical,
+  BookOpen,
 } from "lucide-react";
 
 // Dynamically import Three.js Solar Canvas & 3D Planet Inspector
@@ -51,6 +54,8 @@ export default function HomePage() {
   const [activeMuseumRoomId, setActiveMuseumRoomId] = useState<string>("grand-hall");
   const [selectedPlanetForPreview, setSelectedPlanetForPreview] = useState<SpaceData | null>(null);
   const [isInspectorOpen, setIsInspectorOpen] = useState<boolean>(false);
+  const [isPlanetDrawerOpen, setIsPlanetDrawerOpen] = useState<boolean>(false);
+  const [isToolsMenuOpen, setIsToolsMenuOpen] = useState<boolean>(false);
   const [simSpeed, setSimSpeed] = useState<number>(1);
   const [isChatOpen, setIsChatOpen] = useState<boolean>(false);
   const [isMuseumMenuOpen, setIsMuseumMenuOpen] = useState<boolean>(false);
@@ -133,8 +138,8 @@ export default function HomePage() {
 
           {/* Top Header Navbar */}
           <header className="relative z-30 pt-[max(0.75rem,env(safe-area-inset-top))] px-3 sm:px-5 py-2 sm:py-3 flex items-center justify-between pointer-events-none gap-2">
-            {/* Logo & Title */}
-            <div className="flex items-center gap-2 sm:gap-3 pointer-events-auto bg-slate-900/85 backdrop-blur-xl px-2.5 sm:px-4 py-2 rounded-2xl border border-slate-700/60 shadow-xl max-w-[58vw] xs:max-w-[65vw] sm:max-w-none shrink-0">
+            {/* Logo & School Title */}
+            <div className="flex items-center gap-2 sm:gap-3 pointer-events-auto bg-slate-900/85 backdrop-blur-xl px-2.5 sm:px-4 py-2 rounded-2xl border border-slate-700/60 shadow-xl max-w-[55vw] xs:max-w-[62vw] sm:max-w-none shrink-0">
               <img
                 src="/logo.png"
                 alt="Trường THCS Lê Anh Xuân"
@@ -142,8 +147,7 @@ export default function HomePage() {
               />
               <div className="overflow-hidden">
                 <h1 className="text-xs sm:text-base font-bold text-white flex items-center gap-1.5 truncate">
-                  <span className="sm:hidden">THCS Lê Anh Xuân</span>
-                  <span className="hidden sm:inline">THCS Lê Anh Xuân</span>
+                  <span className="truncate">THCS Lê Anh Xuân</span>
                   <span className="hidden md:inline-block text-[10px] px-2 py-0.5 rounded-full bg-cyan-500/20 text-cyan-300 font-mono border border-cyan-500/30">
                     EduTech VR
                   </span>
@@ -154,70 +158,147 @@ export default function HomePage() {
               </div>
             </div>
 
-            {/* Quick Actions (Switch to Sky Lab Menu, Admin CMS, Audio, Speed) */}
+            {/* Top Right Actions */}
             <div className="flex items-center gap-1.5 sm:gap-2 pointer-events-auto shrink-0">
-              {/* Button: Mở Menu Chọn Sky Lab */}
+              {/* PRIMARY ACTION 1: Nút Khám Phá Sky Lab 360° (Luôn hiển thị) */}
               <button
                 onClick={() => setIsMuseumMenuOpen(true)}
-                className="min-h-[44px] flex items-center gap-1.5 px-2.5 sm:px-3.5 py-2 rounded-2xl bg-gradient-to-r from-amber-500 via-orange-500 to-red-600 text-white font-bold text-xs sm:text-sm shadow-xl shadow-amber-500/30 hover:scale-105 active:scale-95 transition-all border border-amber-300 shrink-0"
+                className="min-h-[44px] flex items-center gap-1.5 px-3 sm:px-4 py-2 rounded-2xl bg-gradient-to-r from-amber-500 via-orange-500 to-red-600 text-white font-bold text-xs sm:text-sm shadow-xl shadow-amber-500/30 hover:scale-105 active:scale-95 transition-all border border-amber-300 shrink-0"
               >
                 <Landmark size={15} />
                 <span>Sky Lab</span>
               </button>
 
-              {/* Button: Admin CMS */}
-              <Link
-                href="/admin"
-                className="min-h-[44px] min-w-[44px] flex items-center justify-center gap-1.5 px-3 py-2 rounded-2xl bg-slate-900/90 text-slate-300 hover:text-white border border-slate-700 hover:bg-slate-800 backdrop-blur-md text-xs font-semibold hover:scale-105 transition shadow-lg shrink-0"
-                title="Quản trị viên (Admin CMS)"
-              >
-                <Settings size={15} className="text-cyan-400" />
-                <span className="hidden md:inline">Quản Trị</span>
-              </Link>
-
-              {/* Theme Toggle (Sáng / Tối) */}
-              <ThemeToggle variant="icon" />
-
-              {/* Ambient Audio Toggle */}
+              {/* PRIMARY ACTION 2: Nút Chọn Hành Tinh (Mobile: mở Bottom Sheet danh sách; Desktop: ẩn) */}
               <button
-                onClick={toggleAmbientSound}
-                className={`min-h-[44px] min-w-[44px] p-2.5 rounded-2xl backdrop-blur-md border transition-all shadow-lg flex items-center justify-center shrink-0 ${
-                  ambientSoundOn
-                    ? "bg-amber-500 text-white border-amber-400 shadow-amber-500/30"
-                    : "bg-slate-900/80 text-slate-300 border-slate-700 hover:bg-slate-800"
-                }`}
-                title="Âm thanh vũ trụ"
+                onClick={() => setIsPlanetDrawerOpen(true)}
+                className="md:hidden min-h-[44px] flex items-center gap-1.5 px-3 py-2 rounded-2xl bg-slate-900/90 text-cyan-300 border border-cyan-500/40 shadow-lg text-xs font-bold active:scale-95 transition shrink-0"
+                title="Chọn hành tinh trong Hệ Mặt Trời"
               >
-                {ambientSoundOn ? <Volume2 size={16} /> : <VolumeX size={16} />}
+                <Layers size={14} className="text-cyan-400" />
+                <span>Hành Tinh</span>
               </button>
 
-              {/* Simulation Speed Switch */}
-              <div className="hidden md:flex items-center gap-1 bg-slate-900/80 backdrop-blur-md p-1 rounded-xl border border-slate-700/60 text-xs font-semibold text-slate-300">
-                <button
-                  onClick={() => setSimSpeed((prev) => (prev === 0 ? 1 : 0))}
-                  className={`px-2 py-1 rounded-lg transition ${
-                    simSpeed === 0 ? "bg-amber-500 text-white" : "hover:bg-slate-800"
-                  }`}
-                  title="Tạm dừng / Tiếp tục"
+              {/* DESKTOP ONLY: Các nút công cụ phụ hiển thị trên màn hình rộng */}
+              <div className="hidden md:flex items-center gap-2">
+                <Link
+                  href="/admin"
+                  className="min-h-[44px] min-w-[44px] flex items-center justify-center gap-1.5 px-3 py-2 rounded-2xl bg-slate-900/90 text-slate-300 hover:text-white border border-slate-700 hover:bg-slate-800 backdrop-blur-md text-xs font-semibold hover:scale-105 transition shadow-lg shrink-0"
+                  title="Quản trị viên (Admin CMS)"
                 >
-                  {simSpeed === 0 ? <Play size={12} /> : <Pause size={12} />}
-                </button>
+                  <Settings size={15} className="text-cyan-400" />
+                  <span>Quản Trị</span>
+                </Link>
+
+                <ThemeToggle variant="icon" />
+
                 <button
-                  onClick={() => setSimSpeed(1)}
-                  className={`px-2 py-1 rounded-lg transition ${
-                    simSpeed === 1 ? "bg-cyan-500 text-white" : "hover:bg-slate-800"
+                  onClick={toggleAmbientSound}
+                  className={`min-h-[44px] min-w-[44px] p-2.5 rounded-2xl backdrop-blur-md border transition-all shadow-lg flex items-center justify-center shrink-0 ${
+                    ambientSoundOn
+                      ? "bg-amber-500 text-white border-amber-400 shadow-amber-500/30"
+                      : "bg-slate-900/80 text-slate-300 border-slate-700 hover:bg-slate-800"
                   }`}
+                  title="Âm thanh vũ trụ"
                 >
-                  1x
+                  {ambientSoundOn ? <Volume2 size={16} /> : <VolumeX size={16} />}
                 </button>
+
+                {/* Simulation Speed Switch */}
+                <div className="flex items-center gap-1 bg-slate-900/80 backdrop-blur-md p-1 rounded-xl border border-slate-700/60 text-xs font-semibold text-slate-300">
+                  <button
+                    onClick={() => setSimSpeed((prev) => (prev === 0 ? 1 : 0))}
+                    className={`px-2 py-1 rounded-lg transition ${
+                      simSpeed === 0 ? "bg-amber-500 text-white" : "hover:bg-slate-800"
+                    }`}
+                    title="Tạm dừng / Tiếp tục"
+                  >
+                    {simSpeed === 0 ? <Play size={12} /> : <Pause size={12} />}
+                  </button>
+                  <button
+                    onClick={() => setSimSpeed(1)}
+                    className={`px-2 py-1 rounded-lg transition ${
+                      simSpeed === 1 ? "bg-cyan-500 text-white" : "hover:bg-slate-800"
+                    }`}
+                  >
+                    1x
+                  </button>
+                  <button
+                    onClick={() => setSimSpeed(3)}
+                    className={`px-2 py-1 rounded-lg transition ${
+                      simSpeed === 3 ? "bg-cyan-500 text-white" : "hover:bg-slate-800"
+                    }`}
+                  >
+                    3x
+                  </button>
+                </div>
+              </div>
+
+              {/* MOBILE ONLY: Nút mở rộng các công cụ phụ (Menu 3 chấm) */}
+              <div className="relative md:hidden">
                 <button
-                  onClick={() => setSimSpeed(3)}
-                  className={`px-2 py-1 rounded-lg transition ${
-                    simSpeed === 3 ? "bg-cyan-500 text-white" : "hover:bg-slate-800"
-                  }`}
+                  onClick={() => setIsToolsMenuOpen((prev) => !prev)}
+                  className="min-h-[44px] min-w-[44px] flex items-center justify-center p-2 rounded-2xl bg-slate-900/90 text-slate-300 border border-slate-700 shadow-lg active:scale-95 transition shrink-0"
+                  title="Mở rộng cài đặt phụ"
                 >
-                  3x
+                  <MoreVertical size={18} />
                 </button>
+
+                {/* Mobile Dropdown Sub-menu */}
+                {isToolsMenuOpen && (
+                  <div className="absolute right-0 top-12 z-50 w-48 p-2 rounded-2xl bg-slate-900/95 border border-slate-700/80 backdrop-blur-2xl shadow-2xl space-y-1.5 animate-slide-up text-xs">
+                    <Link
+                      href="/admin"
+                      onClick={() => setIsToolsMenuOpen(false)}
+                      className="flex items-center gap-2 px-3 py-2 rounded-xl text-slate-200 hover:bg-slate-800 transition"
+                    >
+                      <Settings size={15} className="text-cyan-400" />
+                      <span>Quản Trị CMS</span>
+                    </Link>
+
+                    <div className="flex items-center justify-between px-3 py-2 rounded-xl text-slate-200 hover:bg-slate-800 transition">
+                      <span className="flex items-center gap-2">
+                        <Sparkles size={14} className="text-amber-400" />
+                        Giao diện
+                      </span>
+                      <ThemeToggle variant="icon" />
+                    </div>
+
+                    <button
+                      onClick={() => {
+                        toggleAmbientSound();
+                        setIsToolsMenuOpen(false);
+                      }}
+                      className="w-full flex items-center justify-between px-3 py-2 rounded-xl text-slate-200 hover:bg-slate-800 transition text-left"
+                    >
+                      <span className="flex items-center gap-2">
+                        {ambientSoundOn ? <Volume2 size={15} className="text-amber-400" /> : <VolumeX size={15} />}
+                        Âm thanh nền
+                      </span>
+                      <span className="text-[10px] font-mono text-slate-400">
+                        {ambientSoundOn ? "BẬT" : "TẮT"}
+                      </span>
+                    </button>
+
+                    <div className="pt-1.5 border-t border-slate-800 flex items-center justify-between px-3 py-1">
+                      <span className="text-[11px] text-slate-400">Tốc độ quay:</span>
+                      <div className="flex items-center gap-1">
+                        <button
+                          onClick={() => setSimSpeed(1)}
+                          className={`px-1.5 py-0.5 rounded text-[11px] ${simSpeed === 1 ? "bg-cyan-500 text-white font-bold" : "text-slate-400"}`}
+                        >
+                          1x
+                        </button>
+                        <button
+                          onClick={() => setSimSpeed(3)}
+                          className={`px-1.5 py-0.5 rounded text-[11px] ${simSpeed === 3 ? "bg-cyan-500 text-white font-bold" : "text-slate-400"}`}
+                        >
+                          3x
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                )}
               </div>
             </div>
           </header>
@@ -255,31 +336,56 @@ export default function HomePage() {
             })}
           </div>
 
-          {/* Mobile Horizontal Carousel */}
-          <div className="md:hidden relative z-20 px-3 py-2 flex items-center gap-1.5 overflow-x-auto no-scrollbar max-w-full pointer-events-auto">
-            {Object.values(spacesData).map((p) => {
-              const isSelected = selectedPlanetForPreview?.id === p.id;
-              return (
-                <button
-                  key={`mob-pill-${p.id}`}
-                  onClick={() => {
-                    spaceAudio.playWarpSound();
-                    setSelectedPlanetForPreview(p);
-                    setIsInspectorOpen(true);
-                  }}
-                  title={`${p.name} (Click để xem chi tiết 3D)`}
-                  className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold whitespace-nowrap transition-all border shrink-0 ${
-                    isSelected
-                      ? "bg-cyan-500 text-white border-cyan-300 shadow-md shadow-cyan-500/40 scale-105"
-                      : "bg-slate-900/80 text-slate-300 border-slate-700/60"
-                  }`}
-                >
-                  <span>{p.aiContext.avatarEmoji}</span>
-                  <span>{p.name}</span>
-                </button>
-              );
-            })}
-          </div>
+          {/* Mobile Planet Drawer Modal (Thay thế thanh trượt nằm ngang ở giữa màn hình) */}
+          {isPlanetDrawerOpen && (
+            <div className="md:hidden fixed inset-0 z-50 flex flex-col justify-end bg-black/75 backdrop-blur-sm animate-fade-in pointer-events-auto">
+              <div className="w-full max-h-[75vh] bg-slate-900 border-t border-cyan-500/40 rounded-t-3xl p-4 shadow-2xl flex flex-col space-y-3 animate-slide-up">
+                <div className="flex items-center justify-between pb-2 border-b border-slate-800">
+                  <div className="flex items-center gap-2">
+                    <Layers size={16} className="text-cyan-400" />
+                    <span className="text-sm font-bold text-white uppercase tracking-wider">
+                      Chọn Hành Tinh Học Tập
+                    </span>
+                  </div>
+                  <button
+                    onClick={() => setIsPlanetDrawerOpen(false)}
+                    className="p-1.5 rounded-xl text-slate-400 hover:text-white hover:bg-slate-800"
+                  >
+                    <X size={18} />
+                  </button>
+                </div>
+
+                {/* Grid các thiên thể */}
+                <div className="grid grid-cols-2 gap-2 overflow-y-auto no-scrollbar max-h-[55vh] py-1">
+                  {Object.values(spacesData).map((p) => {
+                    const isSelected = selectedPlanetForPreview?.id === p.id;
+                    return (
+                      <button
+                        key={`mob-modal-${p.id}`}
+                        onClick={() => {
+                          spaceAudio.playWarpSound();
+                          setSelectedPlanetForPreview(p);
+                          setIsPlanetDrawerOpen(false);
+                          setIsInspectorOpen(true);
+                        }}
+                        className={`flex items-center gap-2.5 p-2.5 rounded-2xl text-left border transition ${
+                          isSelected
+                            ? "bg-cyan-500/20 text-cyan-300 border-cyan-400 shadow-md"
+                            : "bg-slate-950/70 text-slate-300 border-slate-800 active:bg-slate-800"
+                        }`}
+                      >
+                        <span className="text-xl shrink-0">{p.aiContext.avatarEmoji}</span>
+                        <div className="overflow-hidden">
+                          <div className="font-bold text-xs truncate text-white">{p.name}</div>
+                          <div className="text-[10px] text-cyan-400 font-medium truncate">{p.nameEn}</div>
+                        </div>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            </div>
+          )}
 
           {/* Planet Detail Preview Bottom Sheet */}
           {selectedPlanetForPreview && (
@@ -347,7 +453,7 @@ export default function HomePage() {
                   title="Mở xem mô hình 3D thực tế, trục nghiêng & ngày đêm"
                 >
                   <Sparkles size={16} className="text-cyan-200" />
-                  <span>Xem Chi Tiết 3D & Ngày Đêm</span>
+                  <span>Vào Học 3D & Thuyết Minh</span>
                 </button>
               </div>
             </div>
