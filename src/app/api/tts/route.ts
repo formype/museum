@@ -42,15 +42,24 @@ export async function GET(req: NextRequest) {
     const cachePath = path.join(CACHE_DIR, `${cacheKey}.mp3`);
 
     if (fs.existsSync(cachePath)) {
-      const cachedBuffer = fs.readFileSync(cachePath);
-      return new NextResponse(new Uint8Array(cachedBuffer), {
-        status: 200,
-        headers: {
-          "Content-Type": "audio/mpeg",
-          "Cache-Control": "public, max-age=31536000, immutable",
-          "X-TTS-Cache": "HIT",
-        },
-      });
+      const stats = fs.statSync(cachePath);
+      if (stats.size > 1000) {
+        const cachedBuffer = fs.readFileSync(cachePath);
+        return new NextResponse(new Uint8Array(cachedBuffer), {
+          status: 200,
+          headers: {
+            "Content-Type": "audio/mpeg",
+            "Cache-Control": "public, max-age=31536000, immutable",
+            "X-TTS-Cache": "HIT",
+          },
+        });
+      } else {
+        try {
+          fs.unlinkSync(cachePath);
+        } catch {
+          // ignore
+        }
+      }
     }
 
     // Generate natural Vietnamese speech with Microsoft Edge TTS (vi-VN-HoaiMyNeural)

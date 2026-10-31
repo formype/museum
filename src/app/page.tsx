@@ -44,6 +44,16 @@ const Planet3DInspectorModal = dynamic(
   { ssr: false }
 );
 
+const EarthMoonLabModal = dynamic(
+  () => import("@/components/earth-moon/EarthMoonLabModal"),
+  { ssr: false }
+);
+
+const SpaceTutorChat = dynamic(
+  () => import("@/components/ai/SpaceTutorChat"),
+  { ssr: false }
+);
+
 export default function HomePage() {
   // Modes: 'solar_3d' | 'museum_360'
   const [viewMode, setViewMode] = useState<"solar_3d" | "museum_360">("solar_3d");
@@ -54,6 +64,7 @@ export default function HomePage() {
   const [activeMuseumRoomId, setActiveMuseumRoomId] = useState<string>("grand-hall");
   const [selectedPlanetForPreview, setSelectedPlanetForPreview] = useState<SpaceData | null>(null);
   const [isInspectorOpen, setIsInspectorOpen] = useState<boolean>(false);
+  const [isEarthMoonLabOpen, setIsEarthMoonLabOpen] = useState<boolean>(false);
   const [isPlanetDrawerOpen, setIsPlanetDrawerOpen] = useState<boolean>(false);
   const [isToolsMenuOpen, setIsToolsMenuOpen] = useState<boolean>(false);
   const [simSpeed, setSimSpeed] = useState<number>(1);
@@ -138,14 +149,14 @@ export default function HomePage() {
 
           {/* Top Header Navbar */}
           <header className="relative z-30 pt-[max(0.75rem,env(safe-area-inset-top))] px-3 sm:px-5 py-2 sm:py-3 flex items-center justify-between pointer-events-none gap-2">
-            {/* Logo & School Title */}
-            <div className="flex items-center gap-2 sm:gap-3 pointer-events-auto bg-slate-900/85 backdrop-blur-xl px-2.5 sm:px-4 py-2 rounded-2xl border border-slate-700/60 shadow-xl max-w-[55vw] xs:max-w-[62vw] sm:max-w-none shrink-0">
+            {/* Logo & School Title (Mobile: Chỉ hiện logo tối ưu không gian; Desktop: Hiện đầy đủ tên trường) */}
+            <div className="flex items-center gap-2 sm:gap-3 pointer-events-auto bg-slate-900/85 backdrop-blur-xl p-1.5 sm:px-4 sm:py-2 rounded-2xl border border-slate-700/60 shadow-xl shrink-0">
               <img
                 src="/logo.png"
                 alt="Trường THCS Lê Anh Xuân"
-                className="w-8 h-8 sm:w-10 sm:h-10 object-contain rounded-full shadow-md shadow-cyan-500/20 shrink-0 border border-cyan-400/40 bg-white/10"
+                className="w-9 h-9 sm:w-10 sm:h-10 object-contain rounded-full shadow-md shadow-cyan-500/20 shrink-0 border border-cyan-400/40 bg-white/10"
               />
-              <div className="overflow-hidden">
+              <div className="overflow-hidden hidden sm:block">
                 <h1 className="text-xs sm:text-base font-bold text-white flex items-center gap-1.5 truncate">
                   <span className="truncate">THCS Lê Anh Xuân</span>
                   <span className="hidden md:inline-block text-[10px] px-2 py-0.5 rounded-full bg-cyan-500/20 text-cyan-300 font-mono border border-cyan-500/30">
@@ -158,112 +169,97 @@ export default function HomePage() {
               </div>
             </div>
 
-            {/* Top Right Actions */}
-            <div className="flex items-center gap-1.5 sm:gap-2 pointer-events-auto shrink-0">
-              {/* PRIMARY ACTION 1: Nút Khám Phá Sky Lab 360° (Luôn hiển thị) */}
+            {/* Top Right Actions: AI mang icon ra ngoài, toàn bộ action còn lại gom vào nút Xem Thêm */}
+            <div className="flex items-center gap-2 pointer-events-auto shrink-0">
+              {/* PRIMARY ACTION: AI Chatbot (Mang icon ra ngoài) */}
               <button
-                onClick={() => setIsMuseumMenuOpen(true)}
-                className="min-h-[44px] flex items-center gap-1.5 px-3 sm:px-4 py-2 rounded-2xl bg-gradient-to-r from-amber-500 via-orange-500 to-red-600 text-white font-bold text-xs sm:text-sm shadow-xl shadow-amber-500/30 hover:scale-105 active:scale-95 transition-all border border-amber-300 shrink-0"
+                onClick={() => {
+                  spaceAudio.playWarpSound();
+                  setIsChatOpen(true);
+                }}
+                className="min-h-[42px] flex items-center gap-1.5 px-3 sm:px-4 py-2 rounded-2xl bg-gradient-to-r from-violet-600 via-purple-600 to-indigo-600 text-white font-extrabold text-xs sm:text-sm shadow-xl shadow-purple-500/30 hover:scale-105 active:scale-95 transition-all border border-purple-300 shrink-0"
+                title="Trợ lý AI Thiên Văn Học - Giải đáp thắc mắc vũ trụ"
               >
-                <Landmark size={15} />
-                <span>Sky Lab</span>
+                <Sparkles size={16} className="text-amber-300 animate-spin-slow" />
+                <span>Hỏi AI</span>
               </button>
 
-              {/* PRIMARY ACTION 2: Nút Chọn Hành Tinh (Mobile: mở Bottom Sheet danh sách; Desktop: ẩn) */}
-              <button
-                onClick={() => setIsPlanetDrawerOpen(true)}
-                className="md:hidden min-h-[44px] flex items-center gap-1.5 px-3 py-2 rounded-2xl bg-slate-900/90 text-cyan-300 border border-cyan-500/40 shadow-lg text-xs font-bold active:scale-95 transition shrink-0"
-                title="Chọn hành tinh trong Hệ Mặt Trời"
-              >
-                <Layers size={14} className="text-cyan-400" />
-                <span>Hành Tinh</span>
-              </button>
-
-              {/* DESKTOP ONLY: Các nút công cụ phụ hiển thị trên màn hình rộng */}
-              <div className="hidden md:flex items-center gap-2">
-                <Link
-                  href="/admin"
-                  className="min-h-[44px] min-w-[44px] flex items-center justify-center gap-1.5 px-3 py-2 rounded-2xl bg-slate-900/90 text-slate-300 hover:text-white border border-slate-700 hover:bg-slate-800 backdrop-blur-md text-xs font-semibold hover:scale-105 transition shadow-lg shrink-0"
-                  title="Quản trị viên (Admin CMS)"
-                >
-                  <Settings size={15} className="text-cyan-400" />
-                  <span>Quản Trị</span>
-                </Link>
-
-                <ThemeToggle variant="icon" />
-
-                <button
-                  onClick={toggleAmbientSound}
-                  className={`min-h-[44px] min-w-[44px] p-2.5 rounded-2xl backdrop-blur-md border transition-all shadow-lg flex items-center justify-center shrink-0 ${
-                    ambientSoundOn
-                      ? "bg-amber-500 text-white border-amber-400 shadow-amber-500/30"
-                      : "bg-slate-900/80 text-slate-300 border-slate-700 hover:bg-slate-800"
-                  }`}
-                  title="Âm thanh vũ trụ"
-                >
-                  {ambientSoundOn ? <Volume2 size={16} /> : <VolumeX size={16} />}
-                </button>
-
-                {/* Simulation Speed Switch */}
-                <div className="flex items-center gap-1 bg-slate-900/80 backdrop-blur-md p-1 rounded-xl border border-slate-700/60 text-xs font-semibold text-slate-300">
-                  <button
-                    onClick={() => setSimSpeed((prev) => (prev === 0 ? 1 : 0))}
-                    className={`px-2 py-1 rounded-lg transition ${
-                      simSpeed === 0 ? "bg-amber-500 text-white" : "hover:bg-slate-800"
-                    }`}
-                    title="Tạm dừng / Tiếp tục"
-                  >
-                    {simSpeed === 0 ? <Play size={12} /> : <Pause size={12} />}
-                  </button>
-                  <button
-                    onClick={() => setSimSpeed(1)}
-                    className={`px-2 py-1 rounded-lg transition ${
-                      simSpeed === 1 ? "bg-cyan-500 text-white" : "hover:bg-slate-800"
-                    }`}
-                  >
-                    1x
-                  </button>
-                  <button
-                    onClick={() => setSimSpeed(3)}
-                    className={`px-2 py-1 rounded-lg transition ${
-                      simSpeed === 3 ? "bg-cyan-500 text-white" : "hover:bg-slate-800"
-                    }`}
-                  >
-                    3x
-                  </button>
-                </div>
-              </div>
-
-              {/* MOBILE ONLY: Nút mở rộng các công cụ phụ (Menu 3 chấm) */}
-              <div className="relative md:hidden">
+              {/* ACTION: Nút Xem Thêm (Gom tất cả hành động vào đây) */}
+              <div className="relative">
                 <button
                   onClick={() => setIsToolsMenuOpen((prev) => !prev)}
-                  className="min-h-[44px] min-w-[44px] flex items-center justify-center p-2 rounded-2xl bg-slate-900/90 text-slate-300 border border-slate-700 shadow-lg active:scale-95 transition shrink-0"
-                  title="Mở rộng cài đặt phụ"
+                  className={`min-h-[42px] flex items-center gap-1.5 px-3 sm:px-3.5 py-2 rounded-2xl bg-slate-900/90 text-slate-200 border border-slate-700 hover:bg-slate-800 backdrop-blur-md text-xs sm:text-sm font-bold shadow-lg active:scale-95 transition shrink-0 ${
+                    isToolsMenuOpen ? "border-cyan-400 bg-slate-800 text-cyan-300" : ""
+                  }`}
+                  title="Mở rộng tất cả các công cụ và chế độ khám phá"
                 >
-                  <MoreVertical size={18} />
+                  <MoreVertical size={16} className="text-cyan-400" />
+                  <span>Xem Thêm</span>
                 </button>
 
-                {/* Mobile Dropdown Sub-menu */}
+                {/* Dropdown Menu Chứa Đầy Đủ Hành Động */}
                 {isToolsMenuOpen && (
-                  <div className="absolute right-0 top-12 z-50 w-48 p-2 rounded-2xl bg-slate-900/95 border border-slate-700/80 backdrop-blur-2xl shadow-2xl space-y-1.5 animate-slide-up text-xs">
+                  <div className="absolute right-0 top-12 z-50 w-56 p-2 rounded-2xl bg-slate-900/95 border border-slate-700/80 backdrop-blur-2xl shadow-2xl space-y-1.5 animate-slide-up text-xs">
+                    {/* 1. Trái Đất & Mặt Trăng */}
+                    <button
+                      onClick={() => {
+                        spaceAudio.playWarpSound();
+                        setIsEarthMoonLabOpen(true);
+                        setIsToolsMenuOpen(false);
+                      }}
+                      className="w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-cyan-300 hover:bg-slate-800 transition text-left font-bold"
+                    >
+                      <span className="text-base">🌍</span>
+                      <span>Trái Đất & Mặt Trăng</span>
+                    </button>
+
+                    {/* 2. Khám phá Sky Lab 360° */}
+                    <button
+                      onClick={() => {
+                        spaceAudio.playWarpSound();
+                        setIsMuseumMenuOpen(true);
+                        setIsToolsMenuOpen(false);
+                      }}
+                      className="w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-amber-300 hover:bg-slate-800 transition text-left font-bold"
+                    >
+                      <Landmark size={15} className="text-amber-400" />
+                      <span>Sky Lab 360°</span>
+                    </button>
+
+                    {/* 3. Danh sách hành tinh */}
+                    <button
+                      onClick={() => {
+                        setIsPlanetDrawerOpen(true);
+                        setIsToolsMenuOpen(false);
+                      }}
+                      className="w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-slate-200 hover:bg-slate-800 transition text-left"
+                    >
+                      <Layers size={15} className="text-cyan-400" />
+                      <span>Chọn Hành Tinh (8 HT)</span>
+                    </button>
+
+                    <div className="h-px bg-slate-800 my-1" />
+
+                    {/* 4. Quản trị CMS */}
                     <Link
                       href="/admin"
                       onClick={() => setIsToolsMenuOpen(false)}
-                      className="flex items-center gap-2 px-3 py-2 rounded-xl text-slate-200 hover:bg-slate-800 transition"
+                      className="flex items-center gap-2.5 px-3 py-2 rounded-xl text-slate-200 hover:bg-slate-800 transition"
                     >
                       <Settings size={15} className="text-cyan-400" />
                       <span>Quản Trị CMS</span>
                     </Link>
 
+                    {/* 5. Giao diện */}
                     <div className="flex items-center justify-between px-3 py-2 rounded-xl text-slate-200 hover:bg-slate-800 transition">
-                      <span className="flex items-center gap-2">
+                      <span className="flex items-center gap-2.5">
                         <Sparkles size={14} className="text-amber-400" />
                         Giao diện
                       </span>
                       <ThemeToggle variant="icon" />
                     </div>
 
+                    {/* 6. Âm thanh nền */}
                     <button
                       onClick={() => {
                         toggleAmbientSound();
@@ -271,7 +267,7 @@ export default function HomePage() {
                       }}
                       className="w-full flex items-center justify-between px-3 py-2 rounded-xl text-slate-200 hover:bg-slate-800 transition text-left"
                     >
-                      <span className="flex items-center gap-2">
+                      <span className="flex items-center gap-2.5">
                         {ambientSoundOn ? <Volume2 size={15} className="text-amber-400" /> : <VolumeX size={15} />}
                         Âm thanh nền
                       </span>
@@ -280,9 +276,17 @@ export default function HomePage() {
                       </span>
                     </button>
 
+                    {/* 7. Tốc độ quay */}
                     <div className="pt-1.5 border-t border-slate-800 flex items-center justify-between px-3 py-1">
                       <span className="text-[11px] text-slate-400">Tốc độ quay:</span>
                       <div className="flex items-center gap-1">
+                        <button
+                          onClick={() => setSimSpeed((prev) => (prev === 0 ? 1 : 0))}
+                          className={`px-1.5 py-0.5 rounded text-[11px] ${simSpeed === 0 ? "bg-amber-500 text-white font-bold" : "text-slate-400"}`}
+                          title="Tạm dừng / Tiếp tục"
+                        >
+                          {simSpeed === 0 ? <Play size={10} /> : <Pause size={10} />}
+                        </button>
                         <button
                           onClick={() => setSimSpeed(1)}
                           className={`px-1.5 py-0.5 rounded text-[11px] ${simSpeed === 1 ? "bg-cyan-500 text-white font-bold" : "text-slate-400"}`}
@@ -464,6 +468,23 @@ export default function HomePage() {
             <Planet3DInspectorModal
               planet={selectedPlanetForPreview}
               onClose={() => setIsInspectorOpen(false)}
+            />
+          )}
+
+          {/* Interactive Earth - Moon - Sun System Lab Modal */}
+          {isEarthMoonLabOpen && (
+            <EarthMoonLabModal
+              isOpen={isEarthMoonLabOpen}
+              onClose={() => setIsEarthMoonLabOpen(false)}
+            />
+          )}
+
+          {/* AI Space Tutor Chatbot Modal */}
+          {isChatOpen && (
+            <SpaceTutorChat
+              space={selectedPlanetForPreview || spacesData["sun"] || SPACES_DATA["sun"]}
+              isOpen={isChatOpen}
+              onClose={() => setIsChatOpen(false)}
             />
           )}
         </div>
