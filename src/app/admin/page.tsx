@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect } from "react";
 import Link from "next/link";
+import { SPACES_DATA, SpaceData } from "@/data/spaces";
 import {
   SpaceRoom,
   SpaceTopic,
@@ -12,9 +13,14 @@ import {
   resetStoredSpaceRooms,
 } from "@/lib/space-exhibition-storage";
 import {
+  getStoredSpaces,
+  saveStoredSpaces,
+} from "@/lib/spaces-storage";
+import {
   extractYouTubeVideoId,
   getYouTubeEmbedUrl,
 } from "@/lib/youtube-utils";
+import { spaceAudio } from "@/lib/audio-synth";
 import ThemeToggle from "@/components/ui/ThemeToggle";
 import {
   Settings,
@@ -41,6 +47,15 @@ import {
   Unlock,
   KeyRound,
   Edit3,
+  Orbit,
+  Bot,
+  MessageSquare,
+  Thermometer,
+  Clock,
+  Globe,
+  BarChart3,
+  FileText,
+  Volume2,
 } from "lucide-react";
 
 export default function AdminSettingsPage() {
@@ -48,10 +63,20 @@ export default function AdminSettingsPage() {
   const [passwordInput, setPasswordInput] = useState<string>("");
   const [passwordError, setPasswordError] = useState<string | null>(null);
 
+  // Section switcher: 'solar' (Hệ Mặt Trời) | 'rooms' (Chuyên Đề Khám Phá)
+  const [adminSection, setAdminSection] = useState<"solar" | "rooms">("solar");
+
+  // State Hệ Mặt Trời
+  const [spaces, setSpaces] = useState<Record<string, SpaceData>>(SPACES_DATA);
+  const [selectedSpaceId, setSelectedSpaceId] = useState<string>("sun");
+  const [solarTab, setSolarTab] = useState<"stats" | "content" | "narration" | "ai_qa">("stats");
+
+  // State Chuyên Đề Khám Phá
   const [rooms, setRooms] = useState<SpaceRoom[]>([]);
   const [activeRoomId, setActiveRoomId] = useState<string>("room-1");
   const [selectedTopicId, setSelectedTopicId] = useState<string>("flights");
   const [activeTab, setActiveTab] = useState<"media" | "content" | "quiz" | "room">("media");
+
   const [toastMessage, setToastMessage] = useState<string | null>(null);
   const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState<boolean>(false);
 
@@ -91,14 +116,17 @@ export default function AdminSettingsPage() {
 
   // Load from LocalStorage
   useEffect(() => {
-    const loaded = getStoredSpaceRooms();
-    setRooms(loaded);
-    if (loaded.length > 0) {
-      setActiveRoomId(loaded[0].id);
-      if (loaded[0].topics.length > 0) {
-        setSelectedTopicId(loaded[0].topics[0].id);
+    const loadedRooms = getStoredSpaceRooms();
+    setRooms(loadedRooms);
+    if (loadedRooms.length > 0) {
+      setActiveRoomId(loadedRooms[0].id);
+      if (loadedRooms[0].topics.length > 0) {
+        setSelectedTopicId(loadedRooms[0].topics[0].id);
       }
     }
+    const loadedSpaces = getStoredSpaces();
+    setSpaces(loadedSpaces);
+    setSelectedSpaceId(Object.keys(loadedSpaces)[0] || "sun");
   }, []);
 
   const showToast = (msg: string) => {
@@ -110,6 +138,88 @@ export default function AdminSettingsPage() {
   const currentTopic =
     currentRoom?.topics.find((t) => t.id === selectedTopicId) ||
     currentRoom?.topics[0];
+  const currentSpace = spaces[selectedSpaceId] || spaces["sun"];
+
+  // Helper to update current space in Solar System
+  const updateCurrentSpace = (updated: Partial<SpaceData>) => {
+    if (!currentSpace) return;
+    const nextSpaces = {
+      ...spaces,
+      [selectedSpaceId]: {
+        ...currentSpace,
+        ...updated,
+      },
+    };
+    setSpaces(nextSpaces);
+  };
+
+  const handleAddNewSpace = () => {
+    const name = prompt("Nhập tên thiên thể / tiểu hành tinh mới:", "Thiên Thể Mới");
+    if (!name || !name.trim()) return;
+    const newId = `space-${Date.now()}`;
+    const newSpace: SpaceData = {
+      id: newId,
+      name: name.trim(),
+      nameEn: name.trim(),
+      tagline: "Thiên thể thú vị trong Hệ Mặt Trời",
+      category: "rocky_planet",
+      themeColor: "#0ea5e9",
+      accentGlow: "rgba(14, 165, 233, 0.4)",
+      stats: {
+        diameter: "~1.000 km",
+        distanceFromSun: "~5.000 triệu km",
+        distanceFromEarth: "~4.500 triệu km",
+        dayLength: "24 giờ",
+        yearLength: "100 năm",
+        temperature: "-200°C",
+        moons: "0",
+      },
+      overview: `Thông tin khoa học và kiến thức giáo khoa về ${name.trim()}...`,
+      keyFeatures: ["Đặc điểm cấu tạo và bề mặt", "Ý nghĩa thiên văn học"],
+      audioNarration: {
+        title: `Thuyết minh về ${name.trim()}`,
+        speaker: "Thuyết Minh Viên Hoài My",
+        durationSec: 60,
+        transcript: `Chào mừng các em học sinh đến với ${name.trim()}. Đây là một thiên thể đặc biệt trong Hệ Mặt Trời.`,
+      },
+      aiContext: {
+        roleName: name.trim(),
+        avatarEmoji: "🪐",
+        personaDescription: `Bạn là trợ lý AI chuyên về ${name.trim()}.`,
+        coreKnowledge: [`Kiến thức về ${name.trim()}`],
+        suggestedQuestions: [`${name.trim()} cách Trái Đất bao xa?`, `Nhiệt độ trên ${name.trim()} là bao nhiêu?`],
+        faqList: [
+          {
+            id: `faq-${Date.now()}-1`,
+            question: `${name.trim()} cách Trái Đất bao xa?`,
+            answer: `${name.trim()} có khoảng cách thay đổi theo chu kỳ quỹ đạo.`,
+          },
+        ],
+      },
+      hotspots: [],
+      planet3d: {
+        size: 1.0,
+        distance: 25,
+        speed: 0.5,
+        color: "#0ea5e9",
+        textureType: "moon",
+      },
+    };
+    const nextSpaces = { ...spaces, [newId]: newSpace };
+    setSpaces(nextSpaces);
+    setSelectedSpaceId(newId);
+    showToast(`Đã thêm thiên thể "${name.trim()}" thành công!`);
+  };
+
+  const handleDeleteSpace = (id: string, name: string) => {
+    if (confirm(`Bạn có chắc muốn xóa thiên thể "${name}"?`)) {
+      const nextSpaces = { ...spaces };
+      delete nextSpaces[id];
+      setSpaces(nextSpaces);
+      setSelectedSpaceId(Object.keys(nextSpaces)[0] || "sun");
+      showToast(`Đã xóa thiên thể "${name}".`);
+    }
+  };
 
   // Helper to update current topic
   const updateCurrentTopic = (updated: Partial<SpaceTopic>) => {
@@ -126,32 +236,42 @@ export default function AdminSettingsPage() {
   // Save changes to LocalStorage
   const handleSaveAll = () => {
     saveStoredSpaceRooms(rooms);
-    showToast("Đã lưu thành công dữ liệu các Phòng Khám Phá Vũ Trụ!");
+    saveStoredSpaces(spaces);
+    showToast("Đã lưu thành công toàn bộ dữ liệu Hệ Mặt Trời & Chuyên Đề Khám Phá!");
   };
 
   // Reset to default
   const handleResetDefaults = () => {
     if (
       confirm(
-        "Bạn có chắc muốn khôi phục lại toàn bộ nội dung, ảnh và video YouTube mặc định ban đầu?"
+        "Bạn có chắc muốn khôi phục lại toàn bộ nội dung Hệ Mặt Trời và Chuyên Đề Khám Phá mặc định ban đầu?"
       )
     ) {
       const def = resetStoredSpaceRooms();
       setRooms(def);
       setActiveRoomId("room-1");
       setSelectedTopicId("flights");
+      setSpaces(SPACES_DATA);
+      saveStoredSpaces(SPACES_DATA);
+      setSelectedSpaceId("sun");
       showToast("Đã khôi phục dữ liệu gốc thành công!");
     }
   };
 
   // Export JSON backup
   const handleExportBackup = () => {
-    const dataStr = JSON.stringify(rooms, null, 2);
+    const backupData = {
+      version: "2.0",
+      exportDate: new Date().toISOString(),
+      rooms,
+      spaces,
+    };
+    const dataStr = JSON.stringify(backupData, null, 2);
     const blob = new Blob([dataStr], { type: "application/json" });
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
-    a.download = `Space-Discovery-Rooms-${new Date().toISOString().slice(0, 10)}.json`;
+    a.download = `Space-Learning-Backup-${new Date().toISOString().slice(0, 10)}.json`;
     a.click();
     URL.revokeObjectURL(url);
     showToast("Đã xuất file sao lưu JSON thành công!");
@@ -165,15 +285,22 @@ export default function AdminSettingsPage() {
     reader.onload = (evt) => {
       try {
         const parsed = JSON.parse(evt.target?.result as string);
-        if (Array.isArray(parsed) && parsed.length > 0) {
+        if (parsed.rooms && Array.isArray(parsed.rooms)) {
+          setRooms(parsed.rooms);
+          saveStoredSpaceRooms(parsed.rooms);
+          setActiveRoomId(parsed.rooms[0]?.id || "room-1");
+          setSelectedTopicId(parsed.rooms[0]?.topics[0]?.id || "");
+        } else if (Array.isArray(parsed)) {
           setRooms(parsed);
           saveStoredSpaceRooms(parsed);
-          setActiveRoomId(parsed[0].id);
-          setSelectedTopicId(parsed[0].topics[0]?.id || "");
-          showToast("Đã nhập dữ liệu thành công từ file JSON!");
-        } else {
-          alert("Cấu trúc file JSON không hợp lệ.");
+          setActiveRoomId(parsed[0]?.id || "room-1");
+          setSelectedTopicId(parsed[0]?.topics[0]?.id || "");
         }
+        if (parsed.spaces) {
+          setSpaces(parsed.spaces);
+          saveStoredSpaces(parsed.spaces);
+        }
+        showToast("Đã nhập dữ liệu thành công từ file JSON!");
       } catch (err) {
         console.error(err);
         alert("Không thể đọc file JSON. Vui lòng kiểm tra lại định dạng.");
@@ -442,135 +569,870 @@ export default function AdminSettingsPage() {
               : "-translate-x-full md:translate-x-0"
           }`}
         >
-          {/* Chuyên Đề Selector (Bỏ Phòng 1, 2, 3 - Dùng trực tiếp tiêu đề chuyên đề) */}
-          <div className="space-y-1 mb-3">
-            <label className="text-[11px] font-bold uppercase tracking-wider text-slate-400 block px-1">
-              Chọn Chuyên Đề Khám Phá:
-            </label>
-            <div className="space-y-1 bg-slate-950 p-1.5 rounded-2xl border border-slate-800">
-              {rooms.map((room, idx) => {
-                const isActive = room.id === activeRoomId;
-                let emoji = "🚀";
-                if (idx === 1) emoji = "🕳️";
-                if (idx === 2) emoji = "✨";
-
-                return (
-                  <button
-                    key={room.id}
-                    onClick={() => {
-                      setActiveRoomId(room.id);
-                      setSelectedTopicId(room.topics[0]?.id || "");
-                    }}
-                    className={`w-full py-2 px-2.5 rounded-xl text-left text-xs font-bold flex items-center gap-2 transition ${
-                      isActive
-                        ? "bg-gradient-to-r from-cyan-500 to-blue-600 text-white shadow-md shadow-cyan-500/20"
-                        : "text-slate-300 hover:text-white hover:bg-slate-800/60"
-                    }`}
-                  >
-                    <span className="text-base shrink-0">{emoji}</span>
-                    <span className="truncate flex-1">{room.title}</span>
-                  </button>
-                );
-              })}
-            </div>
-          </div>
-
-          {/* Current Room Info & Edit Title Button */}
-          {currentRoom && (
-            <div className="p-3 rounded-2xl bg-slate-950/80 border border-slate-800 mb-3 space-y-1.5">
-              <div className="flex items-center justify-between">
-                <span className="text-[10px] font-bold uppercase tracking-wider text-cyan-400">
-                  {currentRoom.badge || "Chuyên Đề"}
-                </span>
-                <button
-                  onClick={() => setActiveTab("room")}
-                  className="text-[11px] text-purple-400 hover:text-purple-300 font-bold flex items-center gap-1 bg-purple-950/40 px-2 py-0.5 rounded-md border border-purple-800/40"
-                  title="Chỉnh sửa tiêu đề và mô tả chuyên đề này"
-                >
-                  <Edit3 size={11} />
-                  <span>Sửa Tiêu Đề</span>
-                </button>
-              </div>
-              <h2 className="text-xs sm:text-sm font-bold text-white leading-tight">
-                {currentRoom.title}
-              </h2>
-              <p className="text-[11px] text-slate-400 line-clamp-2">
-                {currentRoom.subtitle}
-              </p>
-            </div>
-          )}
-
-          {/* Topics List Header */}
-          <div className="flex items-center justify-between mb-2 px-1">
-            <span className="text-xs font-bold text-slate-400 uppercase tracking-wide">
-              Các Chủ Đề ({currentRoom?.topics.length || 0})
-            </span>
+          {/* Main Section Switcher */}
+          <div className="grid grid-cols-2 gap-1.5 p-1 bg-slate-950 rounded-2xl border border-slate-800 mb-3 shrink-0">
             <button
-              onClick={handleAddNewTopic}
-              className="flex items-center gap-1 text-xs font-bold text-cyan-400 hover:text-cyan-300 transition"
-              title="Thêm chủ đề mới vào chuyên đề này"
+              onClick={() => {
+                setAdminSection("solar");
+                setSelectedSpaceId(Object.keys(spaces)[0] || "sun");
+              }}
+              className={`flex items-center justify-center gap-1.5 py-2.5 rounded-xl text-xs font-bold transition ${
+                adminSection === "solar"
+                  ? "bg-gradient-to-r from-cyan-500 to-blue-600 text-white shadow-md shadow-cyan-500/25"
+                  : "text-slate-400 hover:text-white"
+              }`}
             >
-              <Plus size={14} />
-              <span>Thêm mới</span>
+              <Orbit size={14} />
+              <span>Hệ Mặt Trời</span>
+            </button>
+
+            <button
+              onClick={() => {
+                setAdminSection("rooms");
+                setSelectedTopicId(currentRoom?.topics[0]?.id || "");
+              }}
+              className={`flex items-center justify-center gap-1.5 py-2.5 rounded-xl text-xs font-bold transition ${
+                adminSection === "rooms"
+                  ? "bg-gradient-to-r from-purple-500 to-indigo-600 text-white shadow-md shadow-purple-500/25"
+                  : "text-slate-400 hover:text-white"
+              }`}
+            >
+              <BookOpen size={14} />
+              <span>Chuyên Đề</span>
             </button>
           </div>
 
-          {/* Topics List */}
-          <div className="space-y-1.5 flex-1">
-            {currentRoom?.topics.map((t, idx) => {
-              const isSelected = t.id === currentTopic?.id;
-              const hasVideo = !!extractYouTubeVideoId(t.youtubeUrl);
-
-              return (
-                <div
-                  key={t.id}
-                  className={`flex items-center justify-between p-2.5 rounded-2xl border transition group ${
-                    isSelected
-                      ? "bg-slate-800 border-cyan-400 shadow-md text-white"
-                      : "bg-slate-950/60 border-slate-800/80 hover:bg-slate-800/60 text-slate-300 hover:text-white"
-                  }`}
+          {/* SECTION 1: HỆ MẶT TRỜI SIDEBAR */}
+          {adminSection === "solar" && (
+            <div className="space-y-1.5 flex-1">
+              <div className="flex items-center justify-between mb-2 px-1">
+                <span className="text-xs font-bold text-slate-400 uppercase tracking-wide">
+                  Thiên Thể ({Object.keys(spaces).length})
+                </span>
+                <button
+                  onClick={handleAddNewSpace}
+                  className="flex items-center gap-1 text-xs font-bold text-cyan-400 hover:text-cyan-300 transition"
+                  title="Thêm thiên thể mới vào Hệ Mặt Trời"
                 >
-                  <button
-                    onClick={() => {
-                      setSelectedTopicId(t.id);
-                      setIsMobileSidebarOpen(false);
-                    }}
-                    className="flex items-center gap-2.5 text-left flex-1 overflow-hidden"
-                  >
-                    <span className="text-xl p-1 bg-slate-900 rounded-xl border border-slate-700/60 shrink-0">
-                      {t.emoji || "🪐"}
-                    </span>
-                    <div className="overflow-hidden">
-                      <div className="flex items-center gap-1.5">
-                        <span className="text-[10px] text-slate-400 font-mono">
-                          #{idx + 1}
-                        </span>
-                        {hasVideo && (
-                          <span className="text-[9px] px-1 py-0.2 rounded bg-red-600/80 text-white font-bold">
-                            YT
-                          </span>
-                        )}
-                      </div>
-                      <p className="text-xs font-bold truncate">{t.title}</p>
-                    </div>
-                  </button>
+                  <Plus size={14} />
+                  <span>Thêm mới</span>
+                </button>
+              </div>
 
-                  <button
-                    onClick={() => handleDeleteTopic(t.id, t.title)}
-                    className="opacity-0 group-hover:opacity-100 p-1.5 rounded-lg text-slate-500 hover:text-rose-400 hover:bg-slate-900 transition shrink-0 ml-1"
-                    title="Xóa chủ đề này"
+              {Object.values(spaces).map((s) => {
+                const isSelected = selectedSpaceId === s.id;
+                return (
+                  <div
+                    key={s.id}
+                    className={`flex items-center justify-between p-2.5 rounded-2xl border transition group ${
+                      isSelected
+                        ? "bg-slate-800 border-cyan-400 shadow-md text-white"
+                        : "bg-slate-950/60 border-slate-800/80 hover:bg-slate-800/60 text-slate-300 hover:text-white"
+                    }`}
                   >
-                    <Trash2 size={13} />
-                  </button>
+                    <button
+                      onClick={() => {
+                        setSelectedSpaceId(s.id);
+                        setIsMobileSidebarOpen(false);
+                      }}
+                      className="flex items-center gap-2.5 text-left flex-1 overflow-hidden"
+                    >
+                      <span className="text-xl p-1 bg-slate-900 rounded-xl border border-slate-700/60 shrink-0">
+                        {s.aiContext.avatarEmoji || "🪐"}
+                      </span>
+                      <div className="overflow-hidden">
+                        <p className="text-xs font-bold truncate">{s.name}</p>
+                        <p className="text-[10px] text-cyan-400 font-medium truncate">{s.nameEn}</p>
+                      </div>
+                    </button>
+
+                    {/* Xóa thiên thể tạo thêm */}
+                    {!["sun", "mercury", "venus", "earth", "moon", "mars", "jupiter", "saturn", "uranus", "neptune"].includes(s.id) && (
+                      <button
+                        onClick={() => handleDeleteSpace(s.id, s.name)}
+                        className="opacity-0 group-hover:opacity-100 p-1.5 rounded-lg text-slate-500 hover:text-rose-400 hover:bg-slate-900 transition shrink-0 ml-1"
+                        title="Xóa thiên thể này"
+                      >
+                        <Trash2 size={13} />
+                      </button>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          )}
+
+          {/* SECTION 2: CHUYÊN ĐỀ KHÁM PHÁ SIDEBAR */}
+          {adminSection === "rooms" && (
+            <>
+              {/* Chuyên Đề Selector */}
+              <div className="space-y-1 mb-3">
+                <label className="text-[11px] font-bold uppercase tracking-wider text-slate-400 block px-1">
+                  Chọn Chuyên Đề Khám Phá:
+                </label>
+                <div className="space-y-1 bg-slate-950 p-1.5 rounded-2xl border border-slate-800">
+                  {rooms.map((room, idx) => {
+                    const isActive = room.id === activeRoomId;
+                    let emoji = "🚀";
+                    if (idx === 1) emoji = "🕳️";
+                    if (idx === 2) emoji = "✨";
+
+                    return (
+                      <button
+                        key={room.id}
+                        onClick={() => {
+                          setActiveRoomId(room.id);
+                          setSelectedTopicId(room.topics[0]?.id || "");
+                        }}
+                        className={`w-full py-2 px-2.5 rounded-xl text-left text-xs font-bold flex items-center gap-2 transition ${
+                          isActive
+                            ? "bg-gradient-to-r from-cyan-500 to-blue-600 text-white shadow-md shadow-cyan-500/20"
+                            : "text-slate-300 hover:text-white hover:bg-slate-800/60"
+                        }`}
+                      >
+                        <span className="text-base shrink-0">{emoji}</span>
+                        <span className="truncate flex-1">{room.title}</span>
+                      </button>
+                    );
+                  })}
                 </div>
-              );
-            })}
-          </div>
+              </div>
+
+              {/* Current Room Info & Edit Title Button */}
+              {currentRoom && (
+                <div className="p-3 rounded-2xl bg-slate-950/80 border border-slate-800 mb-3 space-y-1.5">
+                  <div className="flex items-center justify-between">
+                    <span className="text-[10px] font-bold uppercase tracking-wider text-cyan-400">
+                      {currentRoom.badge || "Chuyên Đề"}
+                    </span>
+                    <button
+                      onClick={() => setActiveTab("room")}
+                      className="text-[11px] text-purple-400 hover:text-purple-300 font-bold flex items-center gap-1 bg-purple-950/40 px-2 py-0.5 rounded-md border border-purple-800/40"
+                      title="Chỉnh sửa tiêu đề và mô tả chuyên đề này"
+                    >
+                      <Edit3 size={11} />
+                      <span>Sửa Tiêu Đề</span>
+                    </button>
+                  </div>
+                  <h2 className="text-xs sm:text-sm font-bold text-white leading-tight">
+                    {currentRoom.title}
+                  </h2>
+                  <p className="text-[11px] text-slate-400 line-clamp-2">
+                    {currentRoom.subtitle}
+                  </p>
+                </div>
+              )}
+
+              {/* Topics List Header */}
+              <div className="flex items-center justify-between mb-2 px-1">
+                <span className="text-xs font-bold text-slate-400 uppercase tracking-wide">
+                  Các Chủ Đề ({currentRoom?.topics.length || 0})
+                </span>
+                <button
+                  onClick={handleAddNewTopic}
+                  className="flex items-center gap-1 text-xs font-bold text-cyan-400 hover:text-cyan-300 transition"
+                  title="Thêm chủ đề mới vào chuyên đề này"
+                >
+                  <Plus size={14} />
+                  <span>Thêm mới</span>
+                </button>
+              </div>
+
+              {/* Topics List */}
+              <div className="space-y-1.5 flex-1">
+                {currentRoom?.topics.map((t, idx) => {
+                  const isSelected = t.id === currentTopic?.id;
+                  const hasVideo = !!extractYouTubeVideoId(t.youtubeUrl);
+
+                  return (
+                    <div
+                      key={t.id}
+                      className={`flex items-center justify-between p-2.5 rounded-2xl border transition group ${
+                        isSelected
+                          ? "bg-slate-800 border-cyan-400 shadow-md text-white"
+                          : "bg-slate-950/60 border-slate-800/80 hover:bg-slate-800/60 text-slate-300 hover:text-white"
+                      }`}
+                    >
+                      <button
+                        onClick={() => {
+                          setSelectedTopicId(t.id);
+                          setIsMobileSidebarOpen(false);
+                        }}
+                        className="flex items-center gap-2.5 text-left flex-1 overflow-hidden"
+                      >
+                        <span className="text-xl p-1 bg-slate-900 rounded-xl border border-slate-700/60 shrink-0">
+                          {t.emoji || "🪐"}
+                        </span>
+                        <div className="overflow-hidden">
+                          <div className="flex items-center gap-1.5">
+                            <span className="text-[10px] text-slate-400 font-mono">
+                              #{idx + 1}
+                            </span>
+                            {hasVideo && (
+                              <span className="text-[9px] px-1 py-0.2 rounded bg-red-600/80 text-white font-bold">
+                                YT
+                              </span>
+                            )}
+                          </div>
+                          <p className="text-xs font-bold truncate">{t.title}</p>
+                        </div>
+                      </button>
+
+                      <button
+                        onClick={() => handleDeleteTopic(t.id, t.title)}
+                        className="opacity-0 group-hover:opacity-100 p-1.5 rounded-lg text-slate-500 hover:text-rose-400 hover:bg-slate-900 transition shrink-0 ml-1"
+                        title="Xóa chủ đề này"
+                      >
+                        <Trash2 size={13} />
+                      </button>
+                    </div>
+                  );
+                })}
+              </div>
+            </>
+          )}
         </aside>
 
         {/* Right Editor Area */}
         <main className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-6">
-          {currentTopic ? (
+          {adminSection === "solar" ? (
+            currentSpace ? (
+              <div className="max-w-4xl mx-auto space-y-6">
+                {/* Header Editor Block */}
+                <div className="bg-slate-900/90 border border-slate-800 rounded-3xl p-4 sm:p-6 space-y-4 shadow-xl">
+                  <div className="flex items-center justify-between gap-3 border-b border-slate-800 pb-3">
+                    <div className="flex items-center gap-3">
+                      <span className="text-3xl p-2 bg-slate-950 rounded-2xl border border-slate-800">
+                        {currentSpace.aiContext.avatarEmoji || "🪐"}
+                      </span>
+                      <div>
+                        <span className="text-[10px] uppercase tracking-wider text-cyan-400 font-bold px-2 py-0.5 rounded-full bg-cyan-950/60 border border-cyan-800">
+                          Hệ Mặt Trời • {currentSpace.category.replace("_", " ")}
+                        </span>
+                        <h2 className="text-base sm:text-xl font-bold text-white mt-1">
+                          Chỉnh Sửa: {currentSpace.name} ({currentSpace.nameEn})
+                        </h2>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Important Notice: Fixed 3D */}
+                  <div className="p-3.5 rounded-2xl bg-cyan-950/40 border border-cyan-800/60 text-xs text-cyan-200 flex items-start gap-2.5">
+                    <Info size={16} className="text-cyan-400 shrink-0 mt-0.5" />
+                    <span>
+                      💡 <strong>Hình ảnh 3D & quỹ đạo là cố định</strong>: Mô hình quả cầu 3D, bản đồ vân bề mặt và chuyển động quỹ đạo WebGL là <strong>cố định chuẩn thiên văn học</strong>. Bạn toàn quyền cập nhật các thông số thiên văn, bài học và bộ câu hỏi AI bên dưới.
+                    </span>
+                  </div>
+
+                  {/* Sub-Tabs: 1. Thông Số | 2. Tên & Bài Học | 3. Thuyết Minh Giọng Nữ | 4. Bộ Câu Hỏi AI */}
+                  <div className="flex items-center gap-2 border-b border-slate-800 pb-2 overflow-x-auto no-scrollbar">
+                    <button
+                      onClick={() => setSolarTab("stats")}
+                      className={`flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-bold whitespace-nowrap transition ${
+                        solarTab === "stats"
+                          ? "bg-cyan-500 text-white shadow-md shadow-cyan-500/20"
+                          : "text-slate-400 hover:text-white hover:bg-slate-800"
+                      }`}
+                    >
+                      <BarChart3 size={14} />
+                      <span>1. Thông Số Thiên Văn & Khoảng Cách</span>
+                    </button>
+
+                    <button
+                      onClick={() => setSolarTab("content")}
+                      className={`flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-bold whitespace-nowrap transition ${
+                        solarTab === "content"
+                          ? "bg-cyan-500 text-white shadow-md shadow-cyan-500/20"
+                          : "text-slate-400 hover:text-white hover:bg-slate-800"
+                      }`}
+                    >
+                      <FileText size={14} />
+                      <span>2. Tên & Bài Học Giáo Khoa</span>
+                    </button>
+
+                    <button
+                      onClick={() => setSolarTab("narration")}
+                      className={`flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-bold whitespace-nowrap transition ${
+                        solarTab === "narration"
+                          ? "bg-cyan-500 text-white shadow-md shadow-cyan-500/20"
+                          : "text-slate-400 hover:text-white hover:bg-slate-800"
+                      }`}
+                    >
+                      <Volume2 size={14} />
+                      <span>3. Thuyết Minh Giọng Nữ AI</span>
+                    </button>
+
+                    <button
+                      onClick={() => setSolarTab("ai_qa")}
+                      className={`flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-bold whitespace-nowrap transition ${
+                        solarTab === "ai_qa"
+                          ? "bg-cyan-500 text-white shadow-md shadow-cyan-500/20"
+                          : "text-slate-400 hover:text-white hover:bg-slate-800"
+                      }`}
+                    >
+                      <Bot size={14} />
+                      <span>4. Bộ Câu Hỏi Trợ Lý AI</span>
+                    </button>
+                  </div>
+
+                  {/* TAB 1: THÔNG SỐ THIÊN VĂN & KHOẢNG CÁCH */}
+                  {solarTab === "stats" && (
+                    <div className="space-y-4 pt-2">
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+                        <div className="p-3.5 rounded-2xl bg-slate-950/80 border border-slate-800 space-y-1">
+                          <label className="text-xs font-bold text-cyan-400 flex items-center gap-1.5">
+                            <Globe size={14} /> Khoảng Cách Từ Trái Đất:
+                          </label>
+                          <input
+                            type="text"
+                            value={currentSpace.stats.distanceFromEarth || ""}
+                            placeholder="Vd: 225 triệu km (~54.6 - 401 triệu km)..."
+                            onChange={(e) => {
+                              const nextSpaces = {
+                                ...spaces,
+                                [selectedSpaceId]: {
+                                  ...currentSpace,
+                                  stats: { ...currentSpace.stats, distanceFromEarth: e.target.value },
+                                },
+                              };
+                              setSpaces(nextSpaces);
+                            }}
+                            className="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-xs sm:text-sm text-white focus:outline-none focus:border-cyan-400 font-semibold"
+                          />
+                        </div>
+
+                        <div className="p-3.5 rounded-2xl bg-slate-950/80 border border-slate-800 space-y-1">
+                          <label className="text-xs font-bold text-amber-400 flex items-center gap-1.5">
+                            <Orbit size={14} /> Khoảng Cách Tới Mặt Trời:
+                          </label>
+                          <input
+                            type="text"
+                            value={currentSpace.stats.distanceFromSun}
+                            placeholder="Vd: 227.9 triệu km (1.52 AU)..."
+                            onChange={(e) => {
+                              const nextSpaces = {
+                                ...spaces,
+                                [selectedSpaceId]: {
+                                  ...currentSpace,
+                                  stats: { ...currentSpace.stats, distanceFromSun: e.target.value },
+                                },
+                              };
+                              setSpaces(nextSpaces);
+                            }}
+                            className="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-xs sm:text-sm text-white focus:outline-none focus:border-amber-400 font-semibold"
+                          />
+                        </div>
+                      </div>
+
+                      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                        <div className="p-3 rounded-2xl bg-slate-950/80 border border-slate-800 space-y-1">
+                          <label className="text-[11px] font-semibold text-slate-400">Đường Kính:</label>
+                          <input
+                            type="text"
+                            value={currentSpace.stats.diameter}
+                            onChange={(e) => {
+                              const nextSpaces = {
+                                ...spaces,
+                                [selectedSpaceId]: {
+                                  ...currentSpace,
+                                  stats: { ...currentSpace.stats, diameter: e.target.value },
+                                },
+                              };
+                              setSpaces(nextSpaces);
+                            }}
+                            className="w-full bg-slate-900 border border-slate-700 rounded-xl px-2.5 py-1.5 text-xs text-white focus:outline-none focus:border-cyan-400 font-medium"
+                          />
+                        </div>
+
+                        <div className="p-3 rounded-2xl bg-slate-950/80 border border-slate-800 space-y-1">
+                          <label className="text-[11px] font-semibold text-slate-400 flex items-center gap-1">
+                            <Thermometer size={12} className="text-amber-400" /> Nhiệt Độ:
+                          </label>
+                          <input
+                            type="text"
+                            value={currentSpace.stats.temperature}
+                            onChange={(e) => {
+                              const nextSpaces = {
+                                ...spaces,
+                                [selectedSpaceId]: {
+                                  ...currentSpace,
+                                  stats: { ...currentSpace.stats, temperature: e.target.value },
+                                },
+                              };
+                              setSpaces(nextSpaces);
+                            }}
+                            className="w-full bg-slate-900 border border-slate-700 rounded-xl px-2.5 py-1.5 text-xs text-white focus:outline-none focus:border-amber-400 font-medium"
+                          />
+                        </div>
+
+                        <div className="p-3 rounded-2xl bg-slate-950/80 border border-slate-800 space-y-1">
+                          <label className="text-[11px] font-semibold text-slate-400 flex items-center gap-1">
+                            <Clock size={12} className="text-blue-400" /> Độ Dài Ngày:
+                          </label>
+                          <input
+                            type="text"
+                            value={currentSpace.stats.dayLength}
+                            onChange={(e) => {
+                              const nextSpaces = {
+                                ...spaces,
+                                [selectedSpaceId]: {
+                                  ...currentSpace,
+                                  stats: { ...currentSpace.stats, dayLength: e.target.value },
+                                },
+                              };
+                              setSpaces(nextSpaces);
+                            }}
+                            className="w-full bg-slate-900 border border-slate-700 rounded-xl px-2.5 py-1.5 text-xs text-white focus:outline-none focus:border-blue-400 font-medium"
+                          />
+                        </div>
+
+                        <div className="p-3 rounded-2xl bg-slate-950/80 border border-slate-800 space-y-1">
+                          <label className="text-[11px] font-semibold text-slate-400">Chu Kỳ Năm:</label>
+                          <input
+                            type="text"
+                            value={currentSpace.stats.yearLength}
+                            onChange={(e) => {
+                              const nextSpaces = {
+                                ...spaces,
+                                [selectedSpaceId]: {
+                                  ...currentSpace,
+                                  stats: { ...currentSpace.stats, yearLength: e.target.value },
+                                },
+                              };
+                              setSpaces(nextSpaces);
+                            }}
+                            className="w-full bg-slate-900 border border-slate-700 rounded-xl px-2.5 py-1.5 text-xs text-white focus:outline-none focus:border-cyan-400 font-medium"
+                          />
+                        </div>
+                      </div>
+
+                      <div className="p-3.5 rounded-2xl bg-slate-950/80 border border-slate-800 space-y-1 max-w-xs">
+                        <label className="text-[11px] font-semibold text-slate-400">Số Lượng Vệ Tinh (Mặt Trăng):</label>
+                        <input
+                          type="text"
+                          value={currentSpace.stats.moons}
+                          onChange={(e) => {
+                            const nextSpaces = {
+                              ...spaces,
+                              [selectedSpaceId]: {
+                                ...currentSpace,
+                                stats: { ...currentSpace.stats, moons: e.target.value },
+                              },
+                            };
+                            setSpaces(nextSpaces);
+                          }}
+                          className="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-1.5 text-xs text-white focus:outline-none focus:border-cyan-400 font-medium"
+                        />
+                      </div>
+                    </div>
+                  )}
+
+                  {/* TAB 2: TÊN & BÀI HỌC GIÁO KHOA */}
+                  {solarTab === "content" && (
+                    <div className="space-y-4 pt-2">
+                      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                        <div>
+                          <label className="block text-xs font-semibold text-slate-400 mb-1">Tên Tiếng Việt:</label>
+                          <input
+                            type="text"
+                            value={currentSpace.name}
+                            onChange={(e) => {
+                              const nextSpaces = {
+                                ...spaces,
+                                [selectedSpaceId]: { ...currentSpace, name: e.target.value },
+                              };
+                              setSpaces(nextSpaces);
+                            }}
+                            className="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-xs sm:text-sm text-white focus:outline-none focus:border-cyan-400 font-bold"
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-xs font-semibold text-slate-400 mb-1">Tên Tiếng Anh:</label>
+                          <input
+                            type="text"
+                            value={currentSpace.nameEn}
+                            onChange={(e) => {
+                              const nextSpaces = {
+                                ...spaces,
+                                [selectedSpaceId]: { ...currentSpace, nameEn: e.target.value },
+                              };
+                              setSpaces(nextSpaces);
+                            }}
+                            className="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-xs sm:text-sm text-white focus:outline-none focus:border-cyan-400"
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-xs font-semibold text-slate-400 mb-1">Biểu Tượng Emoji:</label>
+                          <input
+                            type="text"
+                            value={currentSpace.aiContext.avatarEmoji}
+                            onChange={(e) => {
+                              const nextSpaces = {
+                                ...spaces,
+                                [selectedSpaceId]: {
+                                  ...currentSpace,
+                                  aiContext: { ...currentSpace.aiContext, avatarEmoji: e.target.value },
+                                },
+                              };
+                              setSpaces(nextSpaces);
+                            }}
+                            className="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-xs sm:text-sm text-white focus:outline-none focus:border-cyan-400 text-center"
+                          />
+                        </div>
+                      </div>
+
+                      <div>
+                        <label className="block text-xs font-semibold text-slate-400 mb-1">Khẩu Hiệu / Tagline:</label>
+                        <input
+                          type="text"
+                          value={currentSpace.tagline}
+                          onChange={(e) => {
+                            const nextSpaces = {
+                              ...spaces,
+                              [selectedSpaceId]: { ...currentSpace, tagline: e.target.value },
+                            };
+                            setSpaces(nextSpaces);
+                          }}
+                          className="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-xs sm:text-sm text-white focus:outline-none focus:border-cyan-400"
+                        />
+                      </div>
+
+                      <div>
+                        <label className="block text-xs font-semibold text-slate-400 mb-1">
+                          Kiến Thức Giáo Khoa & Tổng Quan Chi Tiết:
+                        </label>
+                        <textarea
+                          rows={6}
+                          value={currentSpace.overview}
+                          onChange={(e) => {
+                            const nextSpaces = {
+                              ...spaces,
+                              [selectedSpaceId]: { ...currentSpace, overview: e.target.value },
+                            };
+                            setSpaces(nextSpaces);
+                          }}
+                          className="w-full bg-slate-950 border border-slate-700 rounded-xl p-3 text-xs sm:text-sm text-white focus:outline-none focus:border-cyan-400 leading-relaxed"
+                        />
+                      </div>
+
+                      {/* Key features */}
+                      <div className="space-y-2 p-3.5 rounded-2xl bg-slate-950/80 border border-slate-800">
+                        <div className="flex items-center justify-between">
+                          <label className="text-xs font-bold text-white flex items-center gap-1.5">
+                            <Sparkles size={14} className="text-amber-400" /> Các Đặc Điểm Nổi Bật:
+                          </label>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              const nextFeat = [...(currentSpace.keyFeatures || []), "Đặc điểm khoa học mới..."];
+                              const nextSpaces = {
+                                ...spaces,
+                                [selectedSpaceId]: { ...currentSpace, keyFeatures: nextFeat },
+                              };
+                              setSpaces(nextSpaces);
+                            }}
+                            className="text-xs text-cyan-400 hover:text-cyan-300 font-bold flex items-center gap-1"
+                          >
+                            <Plus size={13} /> Thêm đặc điểm
+                          </button>
+                        </div>
+                        {(currentSpace.keyFeatures || []).map((feat, fIdx) => (
+                          <div key={fIdx} className="flex items-center gap-2">
+                            <span className="text-cyan-400 font-bold">•</span>
+                            <input
+                              type="text"
+                              value={feat}
+                              onChange={(e) => {
+                                const nextFeat = [...currentSpace.keyFeatures];
+                                nextFeat[fIdx] = e.target.value;
+                                const nextSpaces = {
+                                  ...spaces,
+                                  [selectedSpaceId]: { ...currentSpace, keyFeatures: nextFeat },
+                                };
+                                setSpaces(nextSpaces);
+                              }}
+                              className="flex-1 bg-slate-900 border border-slate-700 rounded-xl px-3 py-1.5 text-xs text-white focus:outline-none focus:border-cyan-400"
+                            />
+                            <button
+                              type="button"
+                              onClick={() => {
+                                const nextFeat = currentSpace.keyFeatures.filter((_, i) => i !== fIdx);
+                                const nextSpaces = {
+                                  ...spaces,
+                                  [selectedSpaceId]: { ...currentSpace, keyFeatures: nextFeat },
+                                };
+                                setSpaces(nextSpaces);
+                              }}
+                              className="p-1.5 rounded-lg text-slate-500 hover:text-rose-400"
+                            >
+                              <Trash2 size={13} />
+                            </button>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* TAB 3: THUYẾT MINH GIỌNG NỮ AI */}
+                  {solarTab === "narration" && (
+                    <div className="space-y-4 pt-2">
+                      <div className="p-4 rounded-2xl bg-slate-950/80 border border-slate-800 space-y-3">
+                        <div className="flex items-center justify-between">
+                          <div>
+                            <label className="text-xs font-bold text-white flex items-center gap-1.5">
+                              <Volume2 size={15} className="text-amber-400" /> Văn Bản Đọc Thuyết Minh Giọng Nữ AI:
+                            </label>
+                            <p className="text-[11px] text-slate-400">
+                              Hệ thống sử dụng giọng đọc Nữ Hoài My truyền cảm để đọc bài học cho học sinh khi bấm &quot;Vào Học 3D & Thuyết Minh&quot;.
+                            </p>
+                          </div>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              spaceAudio.speakNarration(currentSpace.audioNarration.transcript);
+                              showToast("Đang phát thuyết minh giọng Nữ AI...");
+                            }}
+                            className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-gradient-to-r from-amber-500 to-yellow-500 text-stone-950 font-bold text-xs shadow-md"
+                          >
+                            <Volume2 size={14} />
+                            <span>Nghe Thử Giọng Nữ AI</span>
+                          </button>
+                        </div>
+
+                        <textarea
+                          rows={6}
+                          value={currentSpace.audioNarration.transcript}
+                          onChange={(e) => {
+                            const nextSpaces = {
+                              ...spaces,
+                              [selectedSpaceId]: {
+                                ...currentSpace,
+                                audioNarration: { ...currentSpace.audioNarration, transcript: e.target.value },
+                              },
+                            };
+                            setSpaces(nextSpaces);
+                          }}
+                          className="w-full bg-slate-900 border border-slate-700 rounded-xl p-3 text-xs sm:text-sm text-white focus:outline-none focus:border-amber-400 leading-relaxed font-sans"
+                        />
+                      </div>
+                    </div>
+                  )}
+
+                  {/* TAB 4: BỘ CÂU HỎI TRỢ LÝ AI (THÊM / XÓA ĐẦY ĐỦ) */}
+                  {solarTab === "ai_qa" && (
+                    <div className="space-y-6 pt-2">
+                      {/* Phần A: Bộ Câu Hỏi Gợi Ý Nhanh Bấm Vào Khung Chat */}
+                      <div className="p-4 sm:p-5 rounded-2xl bg-slate-950/80 border border-slate-800 space-y-3.5">
+                        <div className="flex items-center justify-between">
+                          <div>
+                            <h4 className="text-xs sm:text-sm font-bold text-white flex items-center gap-2">
+                              <Bot size={16} className="text-cyan-400" />
+                              <span>1. Bộ Câu Hỏi Gợi Ý Nhanh Bấm Vào Chat AI</span>
+                            </h4>
+                            <p className="text-[11px] text-slate-400">
+                              Các câu hỏi này xuất hiện dưới dạng nút bấm nhanh trên khung chat để học sinh bấm hỏi AI ngay lập tức.
+                            </p>
+                          </div>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              const existing = currentSpace.aiContext.suggestedQuestions || [];
+                              const nextQ = [...existing, "Câu hỏi mới cần gợi ý..."];
+                              const nextSpaces = {
+                                ...spaces,
+                                [selectedSpaceId]: {
+                                  ...currentSpace,
+                                  aiContext: { ...currentSpace.aiContext, suggestedQuestions: nextQ },
+                                },
+                              };
+                              setSpaces(nextSpaces);
+                              showToast("Đã thêm câu hỏi gợi ý!");
+                            }}
+                            className="flex items-center gap-1 px-3 py-1.5 rounded-xl bg-cyan-600 hover:bg-cyan-500 text-white font-bold text-xs shadow transition shrink-0"
+                          >
+                            <Plus size={14} />
+                            <span>Thêm Gợi Ý</span>
+                          </button>
+                        </div>
+
+                        <div className="space-y-2 pt-1">
+                          {(currentSpace.aiContext.suggestedQuestions || []).map((q, qIdx) => (
+                            <div key={qIdx} className="flex items-center gap-2">
+                              <span className="text-[11px] font-mono text-cyan-400 font-bold w-6">
+                                #{qIdx + 1}
+                              </span>
+                              <input
+                                type="text"
+                                value={q}
+                                onChange={(e) => {
+                                  const nextQ = [...(currentSpace.aiContext.suggestedQuestions || [])];
+                                  nextQ[qIdx] = e.target.value;
+                                  const nextSpaces = {
+                                    ...spaces,
+                                    [selectedSpaceId]: {
+                                      ...currentSpace,
+                                      aiContext: { ...currentSpace.aiContext, suggestedQuestions: nextQ },
+                                    },
+                                  };
+                                  setSpaces(nextSpaces);
+                                }}
+                                className="flex-1 bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-xs sm:text-sm text-white focus:outline-none focus:border-cyan-400"
+                              />
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  const nextQ = currentSpace.aiContext.suggestedQuestions.filter((_, i) => i !== qIdx);
+                                  const nextSpaces = {
+                                    ...spaces,
+                                    [selectedSpaceId]: {
+                                      ...currentSpace,
+                                      aiContext: { ...currentSpace.aiContext, suggestedQuestions: nextQ },
+                                    },
+                                  };
+                                  setSpaces(nextSpaces);
+                                  showToast("Đã xóa câu hỏi gợi ý.");
+                                }}
+                                className="p-2 text-slate-500 hover:text-rose-400 transition"
+                                title="Xóa câu hỏi gợi ý này"
+                              >
+                                <Trash2 size={14} />
+                              </button>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+
+                      {/* Phần B: Bộ Câu Hỏi Thường Gặp (FAQ) & Trả Lời Chuẩn */}
+                      <div className="p-4 sm:p-5 rounded-2xl bg-slate-950/80 border border-slate-800 space-y-4">
+                        <div className="flex items-center justify-between">
+                          <div>
+                            <h4 className="text-xs sm:text-sm font-bold text-white flex items-center gap-2">
+                              <MessageSquare size={16} className="text-amber-400" />
+                              <span>2. Bộ Câu Hỏi Thường Gặp (FAQ) & Lời Giải Thích AI</span>
+                            </h4>
+                            <p className="text-[11px] text-slate-400">
+                              Thêm câu hỏi và câu trả lời chuẩn xác để trợ lý AI học hỏi và giải đáp ngay cho học sinh.
+                            </p>
+                          </div>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              const existing = currentSpace.aiContext.faqList || [];
+                              const newFaq = {
+                                id: `faq-${Date.now()}`,
+                                question: "Câu hỏi thường gặp mới?",
+                                answer: "Câu trả lời giải thích chi tiết...",
+                              };
+                              const nextSpaces = {
+                                ...spaces,
+                                [selectedSpaceId]: {
+                                  ...currentSpace,
+                                  aiContext: { ...currentSpace.aiContext, faqList: [...existing, newFaq] },
+                                },
+                              };
+                              setSpaces(nextSpaces);
+                              showToast("Đã thêm mục FAQ mới!");
+                            }}
+                            className="flex items-center gap-1 px-3 py-1.5 rounded-xl bg-amber-600 hover:bg-amber-500 text-white font-bold text-xs shadow transition shrink-0"
+                          >
+                            <Plus size={14} />
+                            <span>Thêm FAQ Mới</span>
+                          </button>
+                        </div>
+
+                        {/* Empty state */}
+                        {(!currentSpace.aiContext.faqList || currentSpace.aiContext.faqList.length === 0) && (
+                          <p className="text-xs text-slate-500 italic py-2">
+                            Chưa có câu hỏi FAQ nào cho thiên thể này. Bấm &quot;Thêm FAQ Mới&quot; để tạo.
+                          </p>
+                        )}
+
+                        <div className="space-y-3.5">
+                          {(currentSpace.aiContext.faqList || []).map((faq, fIdx) => (
+                            <div
+                              key={faq.id || fIdx}
+                              className="p-3.5 rounded-xl bg-slate-900 border border-slate-800 space-y-2.5 relative group hover:border-amber-500/40 transition"
+                            >
+                              <div className="flex items-center justify-between">
+                                <span className="text-[11px] font-bold text-amber-400 flex items-center gap-1">
+                                  #{fIdx + 1} Câu Hỏi FAQ
+                                </span>
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    const nextFaq = currentSpace.aiContext.faqList!.filter((_, i) => i !== fIdx);
+                                    const nextSpaces = {
+                                      ...spaces,
+                                      [selectedSpaceId]: {
+                                        ...currentSpace,
+                                        aiContext: { ...currentSpace.aiContext, faqList: nextFaq },
+                                      },
+                                    };
+                                    setSpaces(nextSpaces);
+                                    showToast("Đã xóa mục FAQ.");
+                                  }}
+                                  className="p-1 rounded-lg text-slate-500 hover:text-rose-400 transition"
+                                  title="Xóa mục FAQ này"
+                                >
+                                  <Trash2 size={14} />
+                                </button>
+                              </div>
+
+                              <div>
+                                <label className="block text-[11px] font-semibold text-slate-400 mb-1">Câu hỏi:</label>
+                                <input
+                                  type="text"
+                                  value={faq.question}
+                                  onChange={(e) => {
+                                    const nextFaq = [...currentSpace.aiContext.faqList!];
+                                    nextFaq[fIdx] = { ...nextFaq[fIdx], question: e.target.value };
+                                    const nextSpaces = {
+                                      ...spaces,
+                                      [selectedSpaceId]: {
+                                        ...currentSpace,
+                                        aiContext: { ...currentSpace.aiContext, faqList: nextFaq },
+                                      },
+                                    };
+                                    setSpaces(nextSpaces);
+                                  }}
+                                  className="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-1.5 text-xs text-white focus:outline-none focus:border-amber-400"
+                                />
+                              </div>
+
+                              <div>
+                                <label className="block text-[11px] font-semibold text-slate-400 mb-1">Câu trả lời:</label>
+                                <textarea
+                                  rows={3}
+                                  value={faq.answer}
+                                  onChange={(e) => {
+                                    const nextFaq = [...currentSpace.aiContext.faqList!];
+                                    nextFaq[fIdx] = { ...nextFaq[fIdx], answer: e.target.value };
+                                    const nextSpaces = {
+                                      ...spaces,
+                                      [selectedSpaceId]: {
+                                        ...currentSpace,
+                                        aiContext: { ...currentSpace.aiContext, faqList: nextFaq },
+                                      },
+                                    };
+                                    setSpaces(nextSpaces);
+                                  }}
+                                  className="w-full bg-slate-950 border border-slate-700 rounded-xl p-2.5 text-xs text-white focus:outline-none focus:border-amber-400 leading-relaxed"
+                                />
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </div>
+            ) : (
+              <div className="h-full flex items-center justify-center text-slate-500 text-sm">
+                Chọn một thiên thể từ cột bên trái để bắt đầu chỉnh sửa.
+              </div>
+            )
+          ) : currentTopic ? (
             <div className="max-w-4xl mx-auto space-y-6">
               {/* Header Editor Block */}
               <div className="bg-slate-900/90 border border-slate-800 rounded-3xl p-4 sm:p-6 space-y-4 shadow-xl">

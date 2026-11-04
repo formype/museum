@@ -464,9 +464,8 @@ export default function HomePage() {
           />
 
           {/* Footer */}
-          <footer className="mt-8 pt-6 border-t border-slate-900 text-center text-xs text-slate-500 space-y-1">
+          <footer className="mt-8 pt-6 border-t border-slate-900 text-center text-xs text-slate-500">
             <p className="font-semibold text-slate-400">Trường THCS Lê Anh Xuân • Dự Án Khoa Học & Khám Phá Vũ Trụ Trực Quan</p>
-            <p>Hệ thống tự động lưu trữ cấu trúc file JSON tĩnh, tương thích 100% với môi trường Vercel</p>
           </footer>
         </div>
       )}
