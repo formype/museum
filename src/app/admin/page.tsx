@@ -2,18 +2,19 @@
 
 import React, { useState, useEffect } from "react";
 import Link from "next/link";
-import { SPACES_DATA, SpaceData } from "@/data/spaces";
-import { INITIAL_MUSEUMS, MuseumSite } from "@/data/museums-directory";
 import {
-  getStoredSpaces,
-  saveStoredSpaces,
-  getStoredMuseumSites,
-  saveStoredMuseumSites,
-  resetAllStorageDefaults,
-} from "@/lib/spaces-storage";
-import { spaceAudio } from "@/lib/audio-synth";
-import Visual360CoordinatePicker from "@/components/admin/Visual360CoordinatePicker";
-import ImageUploader from "@/components/admin/ImageUploader";
+  SpaceRoom,
+  SpaceTopic,
+} from "@/data/space-exhibition";
+import {
+  getStoredSpaceRooms,
+  saveStoredSpaceRooms,
+  resetStoredSpaceRooms,
+} from "@/lib/space-exhibition-storage";
+import {
+  extractYouTubeVideoId,
+  getYouTubeEmbedUrl,
+} from "@/lib/youtube-utils";
 import ThemeToggle from "@/components/ui/ThemeToggle";
 import {
   Settings,
@@ -21,70 +22,83 @@ import {
   Trash2,
   Save,
   RotateCcw,
-  Upload,
-  Volume2,
-  Eye,
-  Landmark,
-  Orbit,
   ArrowLeft,
   CheckCircle,
-  FileText,
+  Video,
   Image as ImageIcon,
-  MessageSquare,
   BookOpen,
-  Menu,
-  X,
-  Crosshair,
-  MapPin,
+  HelpCircle,
+  Lightbulb,
   Sparkles,
   Download,
-  FolderPlus,
+  Upload,
+  ExternalLink,
+  Menu,
+  X,
+  Eye,
+  Info,
+  Lock,
+  Unlock,
+  KeyRound,
+  Edit3,
 } from "lucide-react";
 
-export default function AdminPage() {
-  const [adminSection, setAdminSection] = useState<"solar" | "museums">("solar");
-  const [spaces, setSpaces] = useState<Record<string, SpaceData>>({});
-  const [museums, setMuseums] = useState<Record<string, MuseumSite>>({});
-  const [selectedSpaceId, setSelectedSpaceId] = useState<string>("sun");
-  const [selectedMuseumId, setSelectedMuseumId] = useState<string>("history-museum-vn");
-  const [selectedRoomId, setSelectedRoomId] = useState<string>("grand-hall");
-  const [activeTab, setActiveTab] = useState<"general" | "panorama" | "audio" | "faq" | "hotspots">("general");
+export default function AdminSettingsPage() {
+  const [isAuthenticated, setIsAuthenticated] = useState<boolean>(false);
+  const [passwordInput, setPasswordInput] = useState<string>("");
+  const [passwordError, setPasswordError] = useState<string | null>(null);
+
+  const [rooms, setRooms] = useState<SpaceRoom[]>([]);
+  const [activeRoomId, setActiveRoomId] = useState<string>("room-1");
+  const [selectedTopicId, setSelectedTopicId] = useState<string>("flights");
+  const [activeTab, setActiveTab] = useState<"media" | "content" | "quiz" | "room">("media");
   const [toastMessage, setToastMessage] = useState<string | null>(null);
   const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState<boolean>(false);
-  const [pickedCoords, setPickedCoords] = useState<{ pitch: number; yaw: number } | null>(null);
-  const [activeCreationData, setActiveCreationData] = useState<{
-    title: string;
-    category: "info" | "portal" | "quiz" | "discovery";
-    badge: string;
-    era: string;
-    emoji: string;
-    description: string;
-    fact: string;
-    funFact: string;
-    audioGuideText: string;
-    image: string;
-  }>({
-    title: "",
-    category: "info",
-    badge: "Khám Phá",
-    era: "Thời kỳ lịch sử",
-    emoji: "🏺",
-    description: "",
-    fact: "",
-    funFact: "",
-    audioGuideText: "",
-    image: "",
-  });
 
+  // Check auth session
   useEffect(() => {
-    const loadedSpaces = getStoredSpaces();
-    const loadedMuseums = getStoredMuseumSites();
-    setSpaces(loadedSpaces);
-    setMuseums(loadedMuseums);
-    setSelectedSpaceId(Object.keys(loadedSpaces)[0] || "sun");
-    const firstMusId = Object.keys(loadedMuseums)[0] || "history-museum-vn";
-    setSelectedMuseumId(firstMusId);
-    setSelectedRoomId(loadedMuseums[firstMusId]?.defaultRoomId || Object.keys(loadedMuseums[firstMusId]?.rooms || {})[0] || "grand-hall");
+    if (typeof window !== "undefined") {
+      const auth = sessionStorage.getItem("admin_space_auth");
+      if (auth === "true") {
+        setIsAuthenticated(true);
+      }
+    }
+  }, []);
+
+  const handleLogin = (e: React.FormEvent) => {
+    e.preventDefault();
+    // Mật khẩu mặc định quản trị (hoặc do trường đặt)
+    const validPasswords = ["123456", "admin123", "leanhxuan", "thcsleanhxuan"];
+    if (validPasswords.includes(passwordInput.trim().toLowerCase())) {
+      setIsAuthenticated(true);
+      setPasswordError(null);
+      if (typeof window !== "undefined") {
+        sessionStorage.setItem("admin_space_auth", "true");
+      }
+      showToast("Đăng nhập quyền quản trị thành công!");
+    } else {
+      setPasswordError("Mật khẩu không chính xác. Vui lòng thử lại!");
+    }
+  };
+
+  const handleLogout = () => {
+    setIsAuthenticated(false);
+    if (typeof window !== "undefined") {
+      sessionStorage.removeItem("admin_space_auth");
+    }
+    showToast("Đã khóa quyền quản trị.");
+  };
+
+  // Load from LocalStorage
+  useEffect(() => {
+    const loaded = getStoredSpaceRooms();
+    setRooms(loaded);
+    if (loaded.length > 0) {
+      setActiveRoomId(loaded[0].id);
+      if (loaded[0].topics.length > 0) {
+        setSelectedTopicId(loaded[0].topics[0].id);
+      }
+    }
   }, []);
 
   const showToast = (msg: string) => {
@@ -92,76 +106,58 @@ export default function AdminPage() {
     setTimeout(() => setToastMessage(null), 3000);
   };
 
-  const currentSpace = spaces[selectedSpaceId];
-  const currentMuseum = museums[selectedMuseumId];
-  const currentRoom = currentMuseum?.rooms?.[selectedRoomId];
+  const currentRoom = rooms.find((r) => r.id === activeRoomId) || rooms[0];
+  const currentTopic =
+    currentRoom?.topics.find((t) => t.id === selectedTopicId) ||
+    currentRoom?.topics[0];
 
+  // Helper to update current topic
+  const updateCurrentTopic = (updated: Partial<SpaceTopic>) => {
+    if (!currentRoom || !currentTopic) return;
+    const nextTopics = currentRoom.topics.map((t) =>
+      t.id === currentTopic.id ? { ...t, ...updated } : t
+    );
+    const nextRooms = rooms.map((r) =>
+      r.id === currentRoom.id ? { ...r, topics: nextTopics } : r
+    );
+    setRooms(nextRooms);
+  };
+
+  // Save changes to LocalStorage
   const handleSaveAll = () => {
-    if (adminSection === "solar") {
-      saveStoredSpaces(spaces);
-      showToast("Đã lưu thành công dữ liệu Hệ Mặt Trời!");
-    } else {
-      saveStoredMuseumSites(museums);
-      showToast("Đã lưu thành công danh sách Bảo Tàng & Gian Phòng!");
+    saveStoredSpaceRooms(rooms);
+    showToast("Đã lưu thành công dữ liệu các Phòng Khám Phá Vũ Trụ!");
+  };
+
+  // Reset to default
+  const handleResetDefaults = () => {
+    if (
+      confirm(
+        "Bạn có chắc muốn khôi phục lại toàn bộ nội dung, ảnh và video YouTube mặc định ban đầu?"
+      )
+    ) {
+      const def = resetStoredSpaceRooms();
+      setRooms(def);
+      setActiveRoomId("room-1");
+      setSelectedTopicId("flights");
+      showToast("Đã khôi phục dữ liệu gốc thành công!");
     }
   };
 
-  const handleReset = () => {
-    if (confirm("Bạn có chắc chắn muốn khôi phục về dữ liệu gốc ban đầu?")) {
-      resetAllStorageDefaults();
-      setSpaces(SPACES_DATA);
-      setMuseums(INITIAL_MUSEUMS);
-      setSelectedSpaceId("sun");
-      setSelectedMuseumId("history-museum-vn");
-      setSelectedRoomId("grand-hall");
-      showToast("Đã khôi phục dữ liệu mặc định.");
-    }
-  };
-
-  const handlePanoramaUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-
-    const reader = new FileReader();
-    reader.onload = (event) => {
-      const result = event.target?.result as string;
-      if (!result) return;
-      if (adminSection === "solar" && currentSpace) {
-        setSpaces({
-          ...spaces,
-          [selectedSpaceId]: { ...currentSpace, customPanorama: result },
-        });
-        showToast("Đã cập nhật ảnh 360° cho " + currentSpace.name + ". Hãy bấm 'Lưu Thay Đổi'!");
-      } else if (adminSection === "museums" && currentMuseum && currentRoom) {
-        const nextRooms = { ...currentMuseum.rooms };
-        nextRooms[selectedRoomId] = { ...currentRoom, customPanorama: result };
-        setMuseums({
-          ...museums,
-          [selectedMuseumId]: { ...currentMuseum, rooms: nextRooms },
-        });
-        showToast("Đã cập nhật ảnh 360° cho " + currentRoom.name + ". Hãy bấm 'Lưu Thay Đổi'!");
-      }
-    };
-    reader.readAsDataURL(file);
-  };
-
+  // Export JSON backup
   const handleExportBackup = () => {
-    const backupData = {
-      version: "1.0",
-      exportDate: new Date().toISOString(),
-      spaces,
-      museums,
-    };
-    const blob = new Blob([JSON.stringify(backupData, null, 2)], { type: "application/json" });
+    const dataStr = JSON.stringify(rooms, null, 2);
+    const blob = new Blob([dataStr], { type: "application/json" });
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
-    a.download = `Solar-Museum-360-Backup-${new Date().toISOString().slice(0, 10)}.json`;
+    a.download = `Space-Discovery-Rooms-${new Date().toISOString().slice(0, 10)}.json`;
     a.click();
     URL.revokeObjectURL(url);
-    showToast("Đã xuất file sao lưu dữ liệu (.JSON) thành công!");
+    showToast("Đã xuất file sao lưu JSON thành công!");
   };
 
+  // Import JSON backup
   const handleImportBackup = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -169,219 +165,161 @@ export default function AdminPage() {
     reader.onload = (evt) => {
       try {
         const parsed = JSON.parse(evt.target?.result as string);
-        if (parsed.spaces) {
-          setSpaces(parsed.spaces);
-          saveStoredSpaces(parsed.spaces);
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          setRooms(parsed);
+          saveStoredSpaceRooms(parsed);
+          setActiveRoomId(parsed[0].id);
+          setSelectedTopicId(parsed[0].topics[0]?.id || "");
+          showToast("Đã nhập dữ liệu thành công từ file JSON!");
+        } else {
+          alert("Cấu trúc file JSON không hợp lệ.");
         }
-        if (parsed.museums) {
-          setMuseums(parsed.museums);
-          saveStoredMuseumSites(parsed.museums);
-        }
-        showToast("Đã khôi phục toàn bộ dữ liệu từ file sao lưu JSON!");
       } catch (err) {
         console.error(err);
-        alert("File sao lưu JSON không đúng định dạng!");
+        alert("Không thể đọc file JSON. Vui lòng kiểm tra lại định dạng.");
       }
     };
     reader.readAsText(file);
   };
 
-  const handleTestAudio = (text: string) => {
-    spaceAudio.speakNarration(text);
-  };
+  // Add new topic to current room
+  const handleAddNewTopic = () => {
+    if (!currentRoom) return;
+    const title = prompt("Nhập tiêu đề chủ đề khám phá mới:", "Chủ Đề Vũ Trụ Mới");
+    if (!title || !title.trim()) return;
 
-  const handleAddNewMuseum = () => {
-    const name = prompt("Nhập tên bảo tàng / di tích mới:", "Bảo Tàng Lịch Sử Mới");
-    if (!name || !name.trim()) return;
-    const city = prompt("Nhập địa điểm / thành phố:", "Hà Nội") || "Việt Nam";
-    const emoji = prompt("Biểu tượng Emoji (vd: 🏛️, 🏯, 🏺):", "🏛️") || "🏛️";
-
-    const newId = "museum-" + Date.now();
-    const defaultRoomId = "room-main";
-    const newMuseum: MuseumSite = {
+    const newId = `topic-${Date.now()}`;
+    const newTopic: SpaceTopic = {
       id: newId,
-      name: name.trim(),
-      shortName: name.trim().slice(0, 15),
-      city: city.trim(),
-      badge: "Bảo Tàng Mới",
-      thumbnailEmoji: emoji.trim(),
-      description: "Khám phá không gian văn hóa nghệ thuật và các cổ vật lịch sử quý báu.",
-      defaultRoomId: defaultRoomId,
-      rooms: {
-        [defaultRoomId]: {
-          id: defaultRoomId,
-          name: "Sảnh Trưng Bày Chính",
-          subtitle: "Điểm khởi đầu chuyến tham quan bảo tàng",
-          category: "grand_hall",
-          themeColor: "#d97706",
-          bgType: "grand_hall",
-          audioNarration: {
-            title: `Lời chào mừng tại ${name.trim()}`,
-            speaker: "Thuyết Minh Viên Bảo Ngọc",
-            transcript: `Kính chào quý khách đã đến với ${name.trim()}. Chúc quý khách có một chuyến tham quan thực tế ảo đầy thú vị.`,
-          },
-          aiGuide: {
-            name: "Bảo Ngọc",
-            avatar: "🏛️",
-            title: "Hướng Dẫn Viên Di Sản",
-            welcomeMessage: `Chào mừng bạn đến với ${name.trim()}! Hãy hỏi tôi về các hiện vật trưng bày tại đây nhé.`,
-            suggestedQuestions: ["Bảo tàng được thành lập từ khi nào?", "Hiện vật quý nhất ở đây là gì?"],
-            faqList: [],
-          },
-          navigationLinks: [],
-          artifacts: [],
-        },
-      },
-    };
-
-    const nextMuseums = { ...museums, [newId]: newMuseum };
-    setMuseums(nextMuseums);
-    saveStoredMuseumSites(nextMuseums);
-    setSelectedMuseumId(newId);
-    setSelectedRoomId(defaultRoomId);
-    showToast(`Đã tạo thành công bảo tàng "${name.trim()}"!`);
-  };
-
-  const handleAddNewRoom = () => {
-    if (!currentMuseum) return;
-    const roomName = prompt("Nhập tên gian phòng mới:", "Phòng Trưng Bày Mới");
-    if (!roomName || !roomName.trim()) return;
-
-    const newRoomId = "room-" + Date.now();
-    const newRoom = {
-      id: newRoomId,
-      name: roomName.trim(),
-      subtitle: "Gian phòng trưng bày chuyên đề",
-      category: "relics_gallery" as const,
-      themeColor: "#dc2626",
-      bgType: "relics_gallery" as const,
-      audioNarration: {
-        title: `Thuyết minh tại ${roomName.trim()}`,
-        speaker: "Thuyết Minh Viên AI",
-        transcript: `Chào mừng quý khách đến với ${roomName.trim()}.`,
-      },
-      aiGuide: {
-        name: "Hướng Dẫn Viên AI",
-        avatar: "📜",
-        title: "Chuyên Gia Thuyết Minh",
-        welcomeMessage: `Chào mừng bạn đến với ${roomName.trim()}!`,
-        suggestedQuestions: ["Gian phòng này trưng bày những gì?"],
-        faqList: [],
-      },
-      navigationLinks: [
+      title: title.trim(),
+      subtitle: "Khám phá khoa học thú vị dành cho học sinh",
+      badge: "Mới Thêm",
+      emoji: "🔭",
+      coverImage:
+        "https://images.unsplash.com/photo-1451187580459-43490279c0fa?auto=format&fit=crop&w=1000&q=80",
+      youtubeUrl: "https://www.youtube.com/watch?v=FztR1y3_iP8",
+      summary: "Tóm tắt ngắn gọn, dễ hiểu về chủ đề vũ trụ này...",
+      keyFacts: [
+        { label: "Đặc điểm chính", value: "Thông số hoặc sự kiện nổi bật", icon: "⭐" },
+      ],
+      explanation: [
+        "Đoạn giải thích chi tiết, ngôn từ đơn giản, trực quan giúp học sinh tiếp thu nhanh.",
+      ],
+      funFacts: [
+        "Một bí mật thú vị về chủ đề này mà ít người biết!",
+      ],
+      quizQuestions: [
         {
-          targetRoomId: currentMuseum.defaultRoomId,
-          targetRoomName: "Sảnh Chính",
-          direction: "backward" as const,
-          pitch: -30,
-          yaw: 180,
-          label: "Quay về Sảnh Chính",
+          question: "Câu hỏi trắc nghiệm kiểm tra kiến thức về chủ đề này?",
+          options: ["Đáp án A", "Đáp án B", "Đáp án C", "Đáp án D"],
+          answerIndex: 0,
+          explanation: "Giải thích đáp án đúng một cách thuyết phục cho học sinh.",
         },
       ],
-      artifacts: [],
     };
 
-    const nextRooms = { ...currentMuseum.rooms, [newRoomId]: newRoom };
-    const nextMuseums = {
-      ...museums,
-      [selectedMuseumId]: { ...currentMuseum, rooms: nextRooms },
-    };
-    setMuseums(nextMuseums);
-    saveStoredMuseumSites(nextMuseums);
-    setSelectedRoomId(newRoomId);
-    showToast(`Đã thêm gian phòng "${roomName.trim()}" thành công!`);
+    const nextTopics = [...currentRoom.topics, newTopic];
+    const nextRooms = rooms.map((r) =>
+      r.id === currentRoom.id ? { ...r, topics: nextTopics } : r
+    );
+    setRooms(nextRooms);
+    setSelectedTopicId(newId);
+    showToast(`Đã thêm chủ đề "${title.trim()}" thành công!`);
   };
 
-  // Add Hotspot from Visual 360 Crosshair Target
-  const handleAddMarkerFromCoordinates = (coords: { pitch: number; yaw: number }) => {
-    setPickedCoords(coords);
-    if (adminSection === "solar") {
-      setActiveCreationData({
-        title: `Điểm Khám Phá (${coords.pitch}°, ${coords.yaw}°)`,
-        category: "info",
-        badge: "Khám Phá",
-        era: "",
-        emoji: "✨",
-        description: "",
-        fact: "",
-        funFact: "",
-        audioGuideText: "",
-        image: "",
-      });
-    } else {
-      setActiveCreationData({
-        title: `Cổ Vật Mới (${coords.pitch}°, ${coords.yaw}°)`,
-        category: "info",
-        badge: "",
-        era: "Thời kỳ lịch sử",
-        emoji: "🏺",
-        description: "",
-        fact: "",
-        funFact: "",
-        audioGuideText: "",
-        image: "",
-      });
-    }
-    showToast(`Đã chọn tọa độ Pitch: ${coords.pitch}°, Yaw: ${coords.yaw}°. Hãy điền thông tin và tải ảnh bên dưới!`);
-  };
-
-  const handleSavePickedPoint = () => {
-    if (!pickedCoords) return;
-    if (adminSection === "solar" && currentSpace) {
-      const newSpot = {
-        id: "spot-" + Date.now(),
-        pitch: pickedCoords.pitch,
-        yaw: pickedCoords.yaw,
-        title: activeCreationData.title || `Điểm Khám Phá (${pickedCoords.pitch}°, ${pickedCoords.yaw}°)`,
-        category: activeCreationData.category,
-        badge: activeCreationData.badge || undefined,
-        description: activeCreationData.description || "Mô tả điểm khám phá không gian...",
-        image: activeCreationData.image || undefined,
-        details: {
-          fact: activeCreationData.fact || "Thông tin khoa học về điểm này.",
-          funFact: activeCreationData.funFact || undefined,
-          image: activeCreationData.image || undefined,
-        },
-      };
-
-      setSpaces({
-        ...spaces,
-        [selectedSpaceId]: {
-          ...currentSpace,
-          hotspots: [...currentSpace.hotspots, newSpot],
-        },
-      });
-      setPickedCoords(null);
-      showToast("Đã lưu điểm thuyết minh mới thành công!");
-    } else if (adminSection === "museums" && currentMuseum && currentRoom) {
-      const newArtifact = {
-        id: "art-" + Date.now(),
-        name: activeCreationData.title || `Cổ vật (${pickedCoords.pitch}°, ${pickedCoords.yaw}°)`,
-        era: activeCreationData.era || "Thời kỳ lịch sử",
-        thumbnailEmoji: activeCreationData.emoji || "🏺",
-        shortSummary: activeCreationData.description || "Tóm tắt về hiện vật...",
-        historicalStory: activeCreationData.fact || activeCreationData.description || "Câu chuyện lịch sử chi tiết...",
-        funFact: activeCreationData.funFact || "Bí ẩn lịch sử thú vị.",
-        pitch: pickedCoords.pitch,
-        yaw: pickedCoords.yaw,
-        audioGuideText: activeCreationData.audioGuideText || activeCreationData.description || "Lời giới thiệu hiện vật...",
-        image: activeCreationData.image || undefined,
-      };
-
-      const nextRooms = { ...currentMuseum.rooms };
-      nextRooms[selectedRoomId] = {
-        ...currentRoom,
-        artifacts: [...(currentRoom.artifacts || []), newArtifact],
-      };
-
-      setMuseums({
-        ...museums,
-        [selectedMuseumId]: { ...currentMuseum, rooms: nextRooms },
-      });
-      setPickedCoords(null);
-      showToast("Đã thêm cổ vật mới vào gian phòng thành công!");
+  // Delete topic
+  const handleDeleteTopic = (id: string, name: string) => {
+    if (!currentRoom) return;
+    if (confirm(`Bạn có chắc muốn xóa chủ đề "${name}"?`)) {
+      const nextTopics = currentRoom.topics.filter((t) => t.id !== id);
+      const nextRooms = rooms.map((r) =>
+        r.id === currentRoom.id ? { ...r, topics: nextTopics } : r
+      );
+      setRooms(nextRooms);
+      if (selectedTopicId === id) {
+        setSelectedTopicId(nextTopics[0]?.id || "");
+      }
+      showToast("Đã xóa chủ đề.");
     }
   };
+
+  const previewYoutubeEmbed = currentTopic
+    ? getYouTubeEmbedUrl(currentTopic.youtubeUrl)
+    : null;
+
+  // Helper to update current room info
+  const updateCurrentRoom = (updated: Partial<SpaceRoom>) => {
+    if (!currentRoom) return;
+    const nextRooms = rooms.map((r) =>
+      r.id === currentRoom.id ? { ...r, ...updated } : r
+    );
+    setRooms(nextRooms);
+  };
+
+  if (!isAuthenticated) {
+    return (
+      <div className="min-h-[100dvh] bg-slate-950 text-slate-100 flex flex-col items-center justify-center p-4 selection:bg-cyan-500 selection:text-white">
+        <div className="w-full max-w-md bg-slate-900/90 border border-slate-800 rounded-3xl p-6 sm:p-8 shadow-2xl backdrop-blur-xl space-y-6">
+          <div className="text-center space-y-2">
+            <div className="w-16 h-16 rounded-3xl bg-gradient-to-tr from-cyan-500 to-blue-600 flex items-center justify-center mx-auto text-3xl shadow-lg shadow-cyan-500/20 text-white">
+              <Lock size={30} />
+            </div>
+            <h1 className="text-lg sm:text-xl font-bold text-white">
+              Cài Đặt Khám Phá Vũ Trụ
+            </h1>
+            <p className="text-xs text-slate-400 leading-relaxed">
+              Vui lòng nhập mật khẩu quản trị để chỉnh sửa tiêu đề chuyên đề, bài học, hình ảnh, video YouTube và câu hỏi trắc nghiệm.
+            </p>
+          </div>
+
+          <form onSubmit={handleLogin} className="space-y-4">
+            <div>
+              <label className="block text-xs font-semibold text-slate-300 mb-1.5">
+                Mật Khẩu Quản Trị:
+              </label>
+              <div className="relative">
+                <input
+                  type="password"
+                  placeholder="Nhập mật khẩu quản trị..."
+                  value={passwordInput}
+                  onChange={(e) => {
+                    setPasswordInput(e.target.value);
+                    setPasswordError(null);
+                  }}
+                  autoFocus
+                  className="w-full bg-slate-950 border border-slate-700 rounded-2xl px-4 py-3 text-sm text-white focus:outline-none focus:border-cyan-400 tracking-wider font-mono"
+                />
+              </div>
+              {passwordError && (
+                <p className="text-xs text-rose-400 mt-2 flex items-center gap-1 font-medium">
+                  <span>⚠️</span> {passwordError}
+                </p>
+              )}
+            </div>
+
+            <button
+              type="submit"
+              className="w-full py-3 px-4 rounded-2xl bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 text-white font-bold text-sm shadow-lg shadow-cyan-500/25 transition active:scale-95 flex items-center justify-center gap-2"
+            >
+              <KeyRound size={16} />
+              <span>Mở Khóa Quản Trị</span>
+            </button>
+          </form>
+
+          <div className="pt-2 border-t border-slate-800/80 flex items-center justify-between text-xs text-slate-400">
+            <Link
+              href="/"
+              className="hover:text-cyan-400 flex items-center gap-1 transition"
+            >
+              <ArrowLeft size={13} />
+              <span>Quay về trang chủ</span>
+            </Link>
+            <span className="text-[11px] text-slate-500">Trường THCS Lê Anh Xuân</span>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-[100dvh] bg-slate-950 text-slate-100 flex flex-col font-sans">
@@ -406,42 +344,44 @@ export default function AdminPage() {
           <Link
             href="/"
             className="min-h-[40px] min-w-[40px] p-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white transition flex items-center justify-center"
-            title="Quay về Trang chủ"
+            title="Quay về Trang Khám Phá Vũ Trụ"
           >
             <ArrowLeft size={18} />
           </Link>
 
           <div className="flex items-center gap-2">
-            <div className="w-8 h-8 rounded-xl bg-gradient-to-tr from-cyan-500 to-blue-600 flex items-center justify-center text-white shrink-0">
+            <div className="w-8 h-8 rounded-xl bg-gradient-to-tr from-cyan-500 to-blue-600 flex items-center justify-center text-white shrink-0 shadow-md shadow-cyan-500/20">
               <Settings size={16} />
             </div>
-            <div className="overflow-hidden">
+            <div>
               <h1 className="text-xs sm:text-base font-bold text-white truncate">
-                Quản Trị Hệ Thống (Admin CMS)
+                Cài Đặt Phòng Khám Phá Vũ Trụ
               </h1>
+              <p className="hidden sm:block text-[11px] text-slate-400">
+                Thêm hình ảnh URL, link video YouTube và nội dung bài học cho học sinh
+              </p>
             </div>
           </div>
         </div>
 
-        {/* Action Buttons */}
+        {/* Action Header Buttons */}
         <div className="flex items-center gap-1.5 sm:gap-2">
-          {/* Sáng / Tối */}
           <ThemeToggle variant="icon" />
 
-          {/* Xuất Sao Lưu JSON */}
+          {/* Xuất file JSON */}
           <button
             onClick={handleExportBackup}
             className="hidden sm:flex items-center gap-1 px-3 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-semibold border border-slate-700 transition"
-            title="Xuất file JSON sao lưu toàn bộ dữ liệu"
+            title="Xuất dữ liệu dự phòng JSON"
           >
             <Download size={13} />
             <span>Sao Lưu</span>
           </button>
 
-          {/* Nhập Sao Lưu JSON */}
+          {/* Nhập file JSON */}
           <label
             className="hidden sm:flex items-center gap-1 px-3 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-semibold border border-slate-700 transition cursor-pointer"
-            title="Khôi phục dữ liệu từ file JSON sao lưu"
+            title="Khôi phục dữ liệu từ file JSON"
           >
             <Upload size={13} />
             <span>Nhập File</span>
@@ -453,14 +393,17 @@ export default function AdminPage() {
             />
           </label>
 
+          {/* Khôi phục gốc */}
           <button
-            onClick={handleReset}
+            onClick={handleResetDefaults}
             className="hidden sm:flex items-center gap-1 px-3 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-semibold border border-slate-700 transition"
+            title="Khôi phục lại dữ liệu gốc của cả 3 phòng"
           >
             <RotateCcw size={13} />
-            <span>Khôi Phục</span>
+            <span>Khôi Phục Gốc</span>
           </button>
 
+          {/* Lưu thay đổi */}
           <button
             onClick={handleSaveAll}
             className="min-h-[40px] flex items-center gap-1.5 px-3 sm:px-4 py-2 rounded-xl bg-gradient-to-r from-cyan-500 to-blue-600 text-white text-xs font-bold shadow-lg shadow-cyan-500/30 hover:scale-105 active:scale-95 transition border border-cyan-300"
@@ -474,1159 +417,910 @@ export default function AdminPage() {
             className="min-h-[40px] flex items-center gap-1.5 px-3 sm:px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold shadow-lg shadow-emerald-600/30 transition border border-emerald-400"
           >
             <Eye size={15} />
-            <span className="hidden sm:inline">Xem Tour</span>
+            <span className="hidden sm:inline">Xem Trực Tiếp</span>
           </Link>
+
+          {/* Đăng xuất / Khóa quản trị */}
+          <button
+            onClick={handleLogout}
+            className="min-h-[40px] flex items-center gap-1.5 px-3 py-2 rounded-xl bg-slate-800 hover:bg-rose-950/60 hover:text-rose-300 text-slate-400 text-xs font-semibold border border-slate-700 hover:border-rose-500/40 transition"
+            title="Khóa quyền quản trị"
+          >
+            <Lock size={14} />
+            <span className="hidden sm:inline">Khóa</span>
+          </button>
         </div>
       </header>
 
-      {/* Main Layout */}
+      {/* Main Container */}
       <div className="flex-1 flex overflow-hidden relative">
-        {/* Left Sidebar */}
+        {/* Left Sidebar: Select Room & Topic */}
         <aside
           className={`fixed md:relative inset-y-0 left-0 z-30 w-72 sm:w-80 bg-slate-900 border-r border-slate-800 flex flex-col p-4 overflow-y-auto transform transition-transform duration-300 ${
-            isMobileSidebarOpen ? "translate-x-0" : "-translate-x-full md:translate-x-0"
+            isMobileSidebarOpen
+              ? "translate-x-0"
+              : "-translate-x-full md:translate-x-0"
           }`}
         >
-          {/* Main Section Switcher */}
-          <div className="grid grid-cols-2 gap-1.5 p-1 bg-slate-950 rounded-2xl border border-slate-800 mb-4">
-            <button
-              onClick={() => {
-                setAdminSection("solar");
-                setSelectedSpaceId(Object.keys(spaces)[0] || "sun");
-                if (activeTab === "panorama") setActiveTab("general");
-              }}
-              className={`flex items-center justify-center gap-1.5 py-2 rounded-xl text-xs font-bold transition ${
-                adminSection === "solar"
-                  ? "bg-cyan-500 text-white shadow-md"
-                  : "text-slate-400 hover:text-white"
-              }`}
-            >
-              <Orbit size={14} />
-              <span>Hệ Mặt Trời</span>
-            </button>
+          {/* Chuyên Đề Selector (Bỏ Phòng 1, 2, 3 - Dùng trực tiếp tiêu đề chuyên đề) */}
+          <div className="space-y-1 mb-3">
+            <label className="text-[11px] font-bold uppercase tracking-wider text-slate-400 block px-1">
+              Chọn Chuyên Đề Khám Phá:
+            </label>
+            <div className="space-y-1 bg-slate-950 p-1.5 rounded-2xl border border-slate-800">
+              {rooms.map((room, idx) => {
+                const isActive = room.id === activeRoomId;
+                let emoji = "🚀";
+                if (idx === 1) emoji = "🕳️";
+                if (idx === 2) emoji = "✨";
 
+                return (
+                  <button
+                    key={room.id}
+                    onClick={() => {
+                      setActiveRoomId(room.id);
+                      setSelectedTopicId(room.topics[0]?.id || "");
+                    }}
+                    className={`w-full py-2 px-2.5 rounded-xl text-left text-xs font-bold flex items-center gap-2 transition ${
+                      isActive
+                        ? "bg-gradient-to-r from-cyan-500 to-blue-600 text-white shadow-md shadow-cyan-500/20"
+                        : "text-slate-300 hover:text-white hover:bg-slate-800/60"
+                    }`}
+                  >
+                    <span className="text-base shrink-0">{emoji}</span>
+                    <span className="truncate flex-1">{room.title}</span>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+
+          {/* Current Room Info & Edit Title Button */}
+          {currentRoom && (
+            <div className="p-3 rounded-2xl bg-slate-950/80 border border-slate-800 mb-3 space-y-1.5">
+              <div className="flex items-center justify-between">
+                <span className="text-[10px] font-bold uppercase tracking-wider text-cyan-400">
+                  {currentRoom.badge || "Chuyên Đề"}
+                </span>
+                <button
+                  onClick={() => setActiveTab("room")}
+                  className="text-[11px] text-purple-400 hover:text-purple-300 font-bold flex items-center gap-1 bg-purple-950/40 px-2 py-0.5 rounded-md border border-purple-800/40"
+                  title="Chỉnh sửa tiêu đề và mô tả chuyên đề này"
+                >
+                  <Edit3 size={11} />
+                  <span>Sửa Tiêu Đề</span>
+                </button>
+              </div>
+              <h2 className="text-xs sm:text-sm font-bold text-white leading-tight">
+                {currentRoom.title}
+              </h2>
+              <p className="text-[11px] text-slate-400 line-clamp-2">
+                {currentRoom.subtitle}
+              </p>
+            </div>
+          )}
+
+          {/* Topics List Header */}
+          <div className="flex items-center justify-between mb-2 px-1">
+            <span className="text-xs font-bold text-slate-400 uppercase tracking-wide">
+              Các Chủ Đề ({currentRoom?.topics.length || 0})
+            </span>
             <button
-              onClick={() => {
-                setAdminSection("museums");
-                const firstM = Object.keys(museums)[0] || "history-museum-vn";
-                setSelectedMuseumId(firstM);
-                setSelectedRoomId(museums[firstM]?.defaultRoomId || "grand-hall");
-              }}
-              className={`flex items-center justify-center gap-1.5 py-2 rounded-xl text-xs font-bold transition ${
-                adminSection === "museums"
-                  ? "bg-amber-500 text-stone-950 shadow-md"
-                  : "text-slate-400 hover:text-white"
-              }`}
+              onClick={handleAddNewTopic}
+              className="flex items-center gap-1 text-xs font-bold text-cyan-400 hover:text-cyan-300 transition"
+              title="Thêm chủ đề mới vào chuyên đề này"
             >
-              <Landmark size={14} />
-              <span>Sky Lab / Bảo Tàng</span>
+              <Plus size={14} />
+              <span>Thêm mới</span>
             </button>
           </div>
 
+          {/* Topics List */}
           <div className="space-y-1.5 flex-1">
-            {adminSection === "solar"
-              ? Object.values(spaces).map((s) => {
-                  const isSelected = selectedSpaceId === s.id;
-                  return (
-                    <button
-                      key={`s-${s.id}`}
-                      onClick={() => {
-                        setSelectedSpaceId(s.id);
-                        setIsMobileSidebarOpen(false);
-                      }}
-                      className={`w-full min-h-[44px] flex items-center gap-2.5 px-3 py-2 rounded-xl text-left text-xs font-semibold transition border ${
-                        isSelected
-                          ? "bg-cyan-500/20 text-cyan-300 border-cyan-400/50 shadow-md"
-                          : "bg-slate-800/40 text-slate-300 border-slate-800 hover:bg-slate-800"
-                      }`}
-                    >
-                      <span className="text-base">{s.aiContext.avatarEmoji}</span>
-                      <div className="overflow-hidden">
-                        <div className="font-bold truncate">{s.name}</div>
-                        <div className="text-[10px] text-slate-400 truncate">{s.nameEn}</div>
-                      </div>
-                    </button>
-                  );
-                })
-              : Object.values(museums).map((m) => {
-                  const isSelected = selectedMuseumId === m.id;
-                  const roomCount = Object.keys(m.rooms || {}).length;
+            {currentRoom?.topics.map((t, idx) => {
+              const isSelected = t.id === currentTopic?.id;
+              const hasVideo = !!extractYouTubeVideoId(t.youtubeUrl);
 
-                  return (
-                    <button
-                      key={`mus-item-${m.id}`}
-                      onClick={() => {
-                        setSelectedMuseumId(m.id);
-                        setSelectedRoomId(m.defaultRoomId || Object.keys(m.rooms || {})[0]);
-                        setIsMobileSidebarOpen(false);
-                      }}
-                      className={`w-full min-h-[44px] flex items-center gap-2.5 px-3 py-2.5 rounded-xl text-left text-xs font-semibold transition border ${
-                        isSelected
-                          ? "bg-amber-500/20 text-amber-300 border-amber-400/50 shadow-md"
-                          : "bg-slate-800/40 text-slate-300 border-slate-800 hover:bg-slate-800"
-                      }`}
-                    >
-                      <span className="text-base">{m.thumbnailEmoji}</span>
-                      <div className="overflow-hidden flex-1">
-                        <div className="font-bold truncate">{m.name}</div>
-                        <div className="text-[10px] text-stone-400 flex items-center gap-1">
-                          <span>{m.city}</span> • <span>{roomCount} phòng</span>
-                        </div>
-                      </div>
-                    </button>
-                  );
-                })}
-
-            {adminSection === "museums" && (
-              <div className="pt-3 border-t border-slate-800 space-y-2">
-                <button
-                  onClick={handleAddNewMuseum}
-                  className="w-full flex items-center justify-center gap-1.5 py-2 px-3 rounded-xl bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 border border-amber-500/40 text-xs font-bold transition shadow"
+              return (
+                <div
+                  key={t.id}
+                  className={`flex items-center justify-between p-2.5 rounded-2xl border transition group ${
+                    isSelected
+                      ? "bg-slate-800 border-cyan-400 shadow-md text-white"
+                      : "bg-slate-950/60 border-slate-800/80 hover:bg-slate-800/60 text-slate-300 hover:text-white"
+                  }`}
                 >
-                  <Plus size={14} />
-                  <span>Thêm Bảo Tàng Mới</span>
-                </button>
-
-                {currentMuseum && (
                   <button
-                    onClick={handleAddNewRoom}
-                    className="w-full flex items-center justify-center gap-1.5 py-2 px-3 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-semibold border border-slate-700 transition"
+                    onClick={() => {
+                      setSelectedTopicId(t.id);
+                      setIsMobileSidebarOpen(false);
+                    }}
+                    className="flex items-center gap-2.5 text-left flex-1 overflow-hidden"
                   >
-                    <FolderPlus size={14} />
-                    <span>Thêm Gian Phòng Cho {currentMuseum.name}</span>
+                    <span className="text-xl p-1 bg-slate-900 rounded-xl border border-slate-700/60 shrink-0">
+                      {t.emoji || "🪐"}
+                    </span>
+                    <div className="overflow-hidden">
+                      <div className="flex items-center gap-1.5">
+                        <span className="text-[10px] text-slate-400 font-mono">
+                          #{idx + 1}
+                        </span>
+                        {hasVideo && (
+                          <span className="text-[9px] px-1 py-0.2 rounded bg-red-600/80 text-white font-bold">
+                            YT
+                          </span>
+                        )}
+                      </div>
+                      <p className="text-xs font-bold truncate">{t.title}</p>
+                    </div>
                   </button>
-                )}
-              </div>
-            )}
+
+                  <button
+                    onClick={() => handleDeleteTopic(t.id, t.title)}
+                    className="opacity-0 group-hover:opacity-100 p-1.5 rounded-lg text-slate-500 hover:text-rose-400 hover:bg-slate-900 transition shrink-0 ml-1"
+                    title="Xóa chủ đề này"
+                  >
+                    <Trash2 size={13} />
+                  </button>
+                </div>
+              );
+            })}
           </div>
         </aside>
 
-        {/* Right Main Editor */}
-        <main className="flex-1 flex flex-col bg-slate-950 overflow-y-auto p-4 sm:p-6">
-          {/* Sub Navigation Tabs */}
-          <div className="flex items-center gap-1.5 border-b border-slate-800 pb-2 mb-4 overflow-x-auto no-scrollbar">
-            {/* Chỉ hiện Tab Ảnh 360 & Tọa độ khi đang ở phần Sky Lab / Bảo Tàng */}
-            {adminSection === "museums" && (
-              <button
-                onClick={() => setActiveTab("panorama")}
-                className={`min-h-[38px] flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl text-xs font-bold whitespace-nowrap transition ${
-                  activeTab === "panorama" ? "bg-amber-500 text-stone-950 shadow-md" : "text-slate-400 hover:text-white"
-                }`}
-              >
-                <Crosshair size={14} />
-                <span>1. Chấm Tọa Độ 360° Trực Quan</span>
-              </button>
-            )}
-
-            <button
-              onClick={() => setActiveTab("general")}
-              className={`min-h-[38px] flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl text-xs font-bold whitespace-nowrap transition ${
-                activeTab === "general" ? "bg-cyan-500 text-white" : "text-slate-400 hover:text-white"
-              }`}
-            >
-              <FileText size={13} />
-              <span>{adminSection === "solar" ? "1. Kiến Thức & Thông Số" : "2. Thông Tin"}</span>
-            </button>
-            <button
-              onClick={() => setActiveTab("audio")}
-              className={`min-h-[38px] flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl text-xs font-bold whitespace-nowrap transition ${
-                activeTab === "audio" ? "bg-cyan-500 text-white" : "text-slate-400 hover:text-white"
-              }`}
-            >
-              <Volume2 size={13} />
-              <span>{adminSection === "solar" ? "2. Thuyết Minh Giọng AI" : "3. Thuyết Trình"}</span>
-            </button>
-            <button
-              onClick={() => setActiveTab("faq")}
-              className={`min-h-[38px] flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl text-xs font-bold whitespace-nowrap transition ${
-                activeTab === "faq" ? "bg-cyan-500 text-white" : "text-slate-400 hover:text-white"
-              }`}
-            >
-              <MessageSquare size={13} />
-              <span>{adminSection === "solar" ? "3. Câu Hỏi & Trợ Lý AI" : "4. FAQ & AI"}</span>
-            </button>
-            {adminSection === "museums" && (
-              <button
-                onClick={() => setActiveTab("hotspots")}
-                className={`min-h-[38px] flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl text-xs font-bold whitespace-nowrap transition ${
-                  activeTab === "hotspots" ? "bg-cyan-500 text-white" : "text-slate-400 hover:text-white"
-                }`}
-              >
-                <BookOpen size={13} />
-                <span>5. Danh Sách Hiện Vật</span>
-              </button>
-            )}
-          </div>
-
-          {/* ========================================================================= */}
-          {/* TAB 1: BỘ CHẤM TỌA ĐỘ 360 ĐỘ TRỰC QUAN (CHỈ DÀNH CHO SKY LAB / BẢO TÀNG)  */}
-          {/* ========================================================================= */}
-          {activeTab === "panorama" && adminSection === "museums" && (
-            <div className="max-w-4xl w-full mx-auto space-y-4 animate-fade-in">
-              <div className="p-4 rounded-2xl bg-amber-950/20 border border-amber-500/30">
-                <h3 className="text-sm sm:text-base font-bold text-amber-200 flex items-center gap-2">
-                  <Crosshair size={16} className="text-amber-400" />
-                  Định Vị Tọa Độ & Điểm Thuyết Trình Trên Ảnh 360°
-                </h3>
-                <p className="text-xs text-stone-300 mt-1">
-                  Cách dùng: <strong>Kéo xoay khung hình 360°</strong> bên dưới để đưa tâm ngắm (dấu cộng đỏ) vào đúng đồ vật/vị trí bạn muốn thuyết trình, sau đó bấm nút <strong>&ldquo;🎯 Chấm Tọa Độ Này Để Thuyết Trình&rdquo;</strong>.
-                </p>
-              </div>
-
-              {/* Interactive Visual 360 Coordinate Picker Component */}
-              <Visual360CoordinatePicker
-                bgType={currentRoom?.bgType || "grand_hall"}
-                isSpaceMode={false}
-                spaceId={undefined}
-                customPanoramaUrl={currentRoom?.customPanorama}
-                existingMarkers={
-                  (currentRoom?.artifacts || []).map((a) => ({
-                    id: a.id,
-                    name: a.name,
-                    pitch: a.pitch,
-                    yaw: a.yaw,
-                    emoji: a.thumbnailEmoji,
-                  }))
-                }
-                onAddMarkerAtCoordinate={handleAddMarkerFromCoordinates}
-              />
-
-              {/* Form Điền Nội Dung & Tải Ảnh Cho Điểm Vừa Chấm Tọa Độ */}
-              {pickedCoords && (
-                <div className="p-4 sm:p-5 rounded-2xl bg-slate-900 border-2 border-amber-500/80 shadow-2xl space-y-4 animate-slide-up">
-                  <div className="flex items-center justify-between border-b border-slate-800 pb-3">
-                    <div className="flex items-center gap-2">
-                      <div className="w-7 h-7 rounded-lg bg-amber-500 text-stone-950 flex items-center justify-center font-bold text-xs">
-                        🎯
-                      </div>
-                      <div>
-                        <h4 className="text-sm font-bold text-amber-200">
-                          Điền Thông Tin & Tải Ảnh Cho Cổ Vật / Điểm Trưng Bày
-                        </h4>
-                        <p className="text-[11px] font-mono text-cyan-400">
-                          Tọa độ: Pitch {pickedCoords.pitch}° | Yaw {pickedCoords.yaw}°
-                        </p>
-                      </div>
-                    </div>
-                    <button
-                      onClick={() => setPickedCoords(null)}
-                      className="p-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800"
-                    >
-                      <X size={16} />
-                    </button>
-                  </div>
-
-                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                    <div className="sm:col-span-2">
-                      <label className="block text-[11px] font-semibold text-slate-300 mb-1">
-                        Tên Cổ Vật / Hiện Vật:
-                      </label>
-                      <input
-                        type="text"
-                        value={activeCreationData.title}
-                        onChange={(e) => setActiveCreationData({ ...activeCreationData, title: e.target.value })}
-                        placeholder="Nhập tên/tiêu đề..."
-                        className="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-amber-400"
-                      />
-                    </div>
+        {/* Right Editor Area */}
+        <main className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-6">
+          {currentTopic ? (
+            <div className="max-w-4xl mx-auto space-y-6">
+              {/* Header Editor Block */}
+              <div className="bg-slate-900/90 border border-slate-800 rounded-3xl p-4 sm:p-6 space-y-4 shadow-xl">
+                <div className="flex items-center justify-between gap-3 border-b border-slate-800 pb-3">
+                  <div className="flex items-center gap-3">
+                    <span className="text-3xl p-2 bg-slate-950 rounded-2xl border border-slate-800">
+                      {currentTopic.emoji}
+                    </span>
                     <div>
-                      <label className="block text-[11px] font-semibold text-slate-300 mb-1">
-                        Niên Đại / Thời Kỳ:
-                      </label>
-                      <input
-                        type="text"
-                        value={activeCreationData.era}
-                        onChange={(e) => setActiveCreationData({ ...activeCreationData, era: e.target.value })}
-                        placeholder="Vd: Thế kỷ X..."
-                        className="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-amber-400"
-                      />
-                    </div>
-                  </div>
-
-                  <div>
-                    <label className="block text-[11px] font-semibold text-slate-300 mb-1">Mô Tả / Tóm Tắt Ngắn:</label>
-                    <textarea
-                      rows={2}
-                      value={activeCreationData.description}
-                      onChange={(e) => setActiveCreationData({ ...activeCreationData, description: e.target.value })}
-                      placeholder="Mô tả ngắn gọn về điểm này..."
-                      className="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-amber-400"
-                    />
-                  </div>
-
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                    <div>
-                      <label className="block text-[11px] font-semibold text-slate-300 mb-1">
-                        Câu Chuyện Lịch Sử Chi Tiết:
-                      </label>
-                      <textarea
-                        rows={2}
-                        value={activeCreationData.fact}
-                        onChange={(e) => setActiveCreationData({ ...activeCreationData, fact: e.target.value })}
-                        placeholder="Nội dung kiến thức / câu chuyện chi tiết..."
-                        className="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-amber-400"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-[11px] font-semibold text-slate-300 mb-1">Bí Ẩn / Sự Thật Thú Vị (Fun Fact):</label>
-                      <textarea
-                        rows={2}
-                        value={activeCreationData.funFact}
-                        onChange={(e) => setActiveCreationData({ ...activeCreationData, funFact: e.target.value })}
-                        placeholder="Sự thật thú vị..."
-                        className="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-amber-400"
-                      />
-                    </div>
-                  </div>
-
-                  {/* Upload Image Section with Step-by-Step UI */}
-                  <ImageUploader
-                    label="Hình Ảnh Minh Họa / Ảnh Tư Liệu Đính Kèm:"
-                    value={activeCreationData.image}
-                    onChange={(url) => setActiveCreationData({ ...activeCreationData, image: url })}
-                    accentColor="amber"
-                    sampleCategory="museum"
-                  />
-
-                  <div className="flex items-center justify-end gap-2 pt-2 border-t border-slate-800">
-                    <button
-                      onClick={() => setPickedCoords(null)}
-                      className="px-3.5 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 font-semibold text-xs transition"
-                    >
-                      Hủy Bỏ
-                    </button>
-                    <button
-                      onClick={handleSavePickedPoint}
-                      className="flex items-center gap-1.5 px-4 py-2 rounded-xl bg-gradient-to-r from-amber-500 to-yellow-500 text-stone-950 font-bold text-xs shadow-lg hover:scale-105 active:scale-95 transition"
-                    >
-                      <Save size={14} />
-                      <span>Lưu & Thêm Điểm Neo Này</span>
-                    </button>
-                  </div>
-                </div>
-              )}
-
-              {/* Upload Panorama File Section (Chỉ dành cho phòng bảo tàng) */}
-              <div className="space-y-2">
-                <ImageUploader
-                  label={`Ảnh Toàn Cảnh Panorama 360° Cho ${currentRoom?.name || "Gian Phòng"}:`}
-                  value={currentRoom?.customPanorama}
-                  onChange={(url) => {
-                    if (currentMuseum && currentRoom) {
-                      const nextRooms = { ...currentMuseum.rooms };
-                      nextRooms[selectedRoomId] = { ...currentRoom, customPanorama: url };
-                      setMuseums({
-                        ...museums,
-                        [selectedMuseumId]: { ...currentMuseum, rooms: nextRooms },
-                      });
-                      showToast("Đã cập nhật ảnh 360° cho " + currentRoom.name + ". Hãy bấm 'Lưu Thay Đổi'!");
-                    }
-                  }}
-                  accentColor="amber"
-                  sampleCategory="museum"
-                  isPanorama={true}
-                />
-              </div>
-            </div>
-          )}
-
-          {/* TAB 2: THÔNG TIN */}
-          {activeTab === "general" && (
-            <div className="max-w-4xl w-full mx-auto space-y-4">
-              {adminSection === "solar" && currentSpace ? (
-                <div className="space-y-4 bg-slate-900/60 border border-slate-800 p-4 sm:p-5 rounded-2xl">
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                    <div>
-                      <label className="block text-xs font-bold text-slate-300 mb-1">Tên Hành Tinh / Thiên Thể</label>
-                      <input
-                        type="text"
-                        value={currentSpace.name}
-                        onChange={(e) =>
-                          setSpaces({
-                            ...spaces,
-                            [selectedSpaceId]: { ...currentSpace, name: e.target.value },
-                          })
-                        }
-                        className="w-full bg-slate-800 border border-slate-700 rounded-xl px-3 py-2 text-sm text-white"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-xs font-bold text-slate-300 mb-1">Tên Tiếng Anh</label>
-                      <input
-                        type="text"
-                        value={currentSpace.nameEn}
-                        onChange={(e) =>
-                          setSpaces({
-                            ...spaces,
-                            [selectedSpaceId]: { ...currentSpace, nameEn: e.target.value },
-                          })
-                        }
-                        className="w-full bg-slate-800 border border-slate-700 rounded-xl px-3 py-2 text-sm text-white"
-                      />
-                    </div>
-                  </div>
-
-                  <div>
-                    <label className="block text-xs font-bold text-slate-300 mb-1">Khẩu Hiệu / Tagline</label>
-                    <input
-                      type="text"
-                      value={currentSpace.tagline}
-                      onChange={(e) =>
-                        setSpaces({
-                          ...spaces,
-                          [selectedSpaceId]: { ...currentSpace, tagline: e.target.value },
-                        })
-                      }
-                      className="w-full bg-slate-800 border border-slate-700 rounded-xl px-3 py-2 text-sm text-white"
-                    />
-                  </div>
-
-                  {/* Khoảng cách từ Trái Đất & Mặt Trời */}
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2 border-t border-slate-800">
-                    <div>
-                      <label className="block text-xs font-bold text-cyan-400 mb-1">Khoảng Cách Từ Trái Đất</label>
-                      <input
-                        type="text"
-                        value={currentSpace.stats.distanceFromEarth || ""}
-                        placeholder="Vd: 54.6 - 401 triệu km (~225 triệu km)"
-                        onChange={(e) =>
-                          setSpaces({
-                            ...spaces,
-                            [selectedSpaceId]: {
-                              ...currentSpace,
-                              stats: { ...currentSpace.stats, distanceFromEarth: e.target.value },
-                            },
-                          })
-                        }
-                        className="w-full bg-slate-800 border border-slate-700 rounded-xl px-3 py-2 text-sm text-white"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-xs font-bold text-slate-300 mb-1">Khoảng Cách Tới Mặt Trời</label>
-                      <input
-                        type="text"
-                        value={currentSpace.stats.distanceFromSun}
-                        onChange={(e) =>
-                          setSpaces({
-                            ...spaces,
-                            [selectedSpaceId]: {
-                              ...currentSpace,
-                              stats: { ...currentSpace.stats, distanceFromSun: e.target.value },
-                            },
-                          })
-                        }
-                        className="w-full bg-slate-800 border border-slate-700 rounded-xl px-3 py-2 text-sm text-white"
-                      />
-                    </div>
-                  </div>
-
-                  {/* Các thông số thiên văn & địa lý */}
-                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 pt-2 border-t border-slate-800">
-                    <div>
-                      <label className="block text-[11px] font-bold text-slate-300 mb-1">Đường Kính</label>
-                      <input
-                        type="text"
-                        value={currentSpace.stats.diameter}
-                        onChange={(e) =>
-                          setSpaces({
-                            ...spaces,
-                            [selectedSpaceId]: {
-                              ...currentSpace,
-                              stats: { ...currentSpace.stats, diameter: e.target.value },
-                            },
-                          })
-                        }
-                        className="w-full bg-slate-800 border border-slate-700 rounded-xl px-2.5 py-1.5 text-xs text-white"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-[11px] font-bold text-slate-300 mb-1">Nhiệt Độ Bề Mặt</label>
-                      <input
-                        type="text"
-                        value={currentSpace.stats.temperature}
-                        onChange={(e) =>
-                          setSpaces({
-                            ...spaces,
-                            [selectedSpaceId]: {
-                              ...currentSpace,
-                              stats: { ...currentSpace.stats, temperature: e.target.value },
-                            },
-                          })
-                        }
-                        className="w-full bg-slate-800 border border-slate-700 rounded-xl px-2.5 py-1.5 text-xs text-white"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-[11px] font-bold text-slate-300 mb-1">Độ Dài Ngày</label>
-                      <input
-                        type="text"
-                        value={currentSpace.stats.dayLength}
-                        onChange={(e) =>
-                          setSpaces({
-                            ...spaces,
-                            [selectedSpaceId]: {
-                              ...currentSpace,
-                              stats: { ...currentSpace.stats, dayLength: e.target.value },
-                            },
-                          })
-                        }
-                        className="w-full bg-slate-800 border border-slate-700 rounded-xl px-2.5 py-1.5 text-xs text-white"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-[11px] font-bold text-slate-300 mb-1">Chu Kỳ Năm</label>
-                      <input
-                        type="text"
-                        value={currentSpace.stats.yearLength}
-                        onChange={(e) =>
-                          setSpaces({
-                            ...spaces,
-                            [selectedSpaceId]: {
-                              ...currentSpace,
-                              stats: { ...currentSpace.stats, yearLength: e.target.value },
-                            },
-                          })
-                        }
-                        className="w-full bg-slate-800 border border-slate-700 rounded-xl px-2.5 py-1.5 text-xs text-white"
-                      />
-                    </div>
-                  </div>
-
-                  {/* Mô tả chi tiết tổng quan */}
-                  <div className="pt-2 border-t border-slate-800">
-                    <label className="block text-xs font-bold text-slate-300 mb-1">Mô Tả Chi Tiết / Kiến Thức Giáo Khoa</label>
-                    <textarea
-                      rows={5}
-                      value={currentSpace.overview}
-                      onChange={(e) =>
-                        setSpaces({
-                          ...spaces,
-                          [selectedSpaceId]: { ...currentSpace, overview: e.target.value },
-                        })
-                      }
-                      className="w-full bg-slate-800 border border-slate-700 rounded-xl px-3 py-2 text-sm text-white leading-relaxed"
-                    />
-                  </div>
-                </div>
-              ) : adminSection === "museums" && currentMuseum ? (
-                <div className="space-y-4 bg-slate-900/60 border border-slate-800 p-4 sm:p-5 rounded-2xl">
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                    <div>
-                      <label className="block text-xs font-bold text-slate-300 mb-1">Tên Bảo Tàng</label>
-                      <input
-                        type="text"
-                        value={currentMuseum.name}
-                        onChange={(e) =>
-                          setMuseums({
-                            ...museums,
-                            [selectedMuseumId]: { ...currentMuseum, name: e.target.value },
-                          })
-                        }
-                        className="w-full bg-slate-800 border border-slate-700 rounded-xl px-3 py-2 text-sm text-white"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-xs font-bold text-slate-300 mb-1">Thành Phố</label>
-                      <input
-                        type="text"
-                        value={currentMuseum.city}
-                        onChange={(e) =>
-                          setMuseums({
-                            ...museums,
-                            [selectedMuseumId]: { ...currentMuseum, city: e.target.value },
-                          })
-                        }
-                        className="w-full bg-slate-800 border border-slate-700 rounded-xl px-3 py-2 text-sm text-white"
-                      />
+                      <span className="text-[10px] uppercase tracking-wider text-cyan-400 font-bold px-2 py-0.5 rounded-full bg-cyan-950/60 border border-cyan-800">
+                        {currentRoom?.title} • {currentTopic.badge}
+                      </span>
+                      <h2 className="text-base sm:text-xl font-bold text-white mt-1">
+                        Chỉnh Sửa: {currentTopic.title}
+                      </h2>
                     </div>
                   </div>
                 </div>
-              ) : null}
-            </div>
-          )}
 
-          {/* TAB 3: THUYẾT TRÌNH */}
-          {activeTab === "audio" && (
-            <div className="max-w-4xl w-full mx-auto space-y-4">
-              <div className="space-y-4 bg-slate-900/60 border border-slate-800 p-4 sm:p-5 rounded-2xl">
-                {/* Voice Selection & Engine Settings */}
-                <div className="p-4 rounded-xl bg-slate-950/80 border border-slate-800 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
-                  <div>
-                    <div className="text-xs font-bold text-amber-300 flex items-center gap-1.5">
-                      <Sparkles size={14} className="text-amber-400" />
-                      Công Nghệ Giọng Đọc Nữ Việt Nam Truyền Cảm:
-                    </div>
-                    <p className="text-[11px] text-slate-400 mt-0.5">
-                      Hệ thống tự động sử dụng giọng nữ tiếng Việt truyền cảm, phát âm tự nhiên, ngắt nghỉ câu rõ ràng.
-                    </p>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <button
-                      onClick={() => {
-                        const transcript =
-                          adminSection === "solar"
-                            ? currentSpace?.audioNarration.transcript || ""
-                            : currentRoom?.audioNarration.transcript || "";
-                        handleTestAudio(transcript);
-                      }}
-                      className="flex items-center gap-1.5 px-4 py-2 rounded-xl bg-gradient-to-r from-amber-500 to-yellow-500 text-stone-950 font-bold text-xs shadow-lg hover:scale-105 transition"
-                    >
-                      <Volume2 size={15} />
-                      <span>Nghe Thử Giọng Nữ AI</span>
-                    </button>
-                  </div>
-                </div>
-
-                <div className="flex items-center justify-between">
-                  <h3 className="text-sm font-bold text-white">Văn Bản Thuyết Trình (Transcript)</h3>
-                  <span className="text-[11px] text-slate-400">
-                    Người đọc: {adminSection === "solar" ? currentSpace?.audioNarration.speaker : currentRoom?.audioNarration.speaker}
-                  </span>
-                </div>
-                <textarea
-                  rows={7}
-                  value={
-                    adminSection === "solar"
-                      ? currentSpace?.audioNarration.transcript || ""
-                      : currentRoom?.audioNarration.transcript || ""
-                  }
-                  onChange={(e) => {
-                    if (adminSection === "solar" && currentSpace) {
-                      setSpaces({
-                        ...spaces,
-                        [selectedSpaceId]: {
-                          ...currentSpace,
-                          audioNarration: { ...currentSpace.audioNarration, transcript: e.target.value },
-                        },
-                      });
-                    } else if (currentMuseum && currentRoom) {
-                      const nextRooms = { ...currentMuseum.rooms };
-                      nextRooms[selectedRoomId] = {
-                        ...currentRoom,
-                        audioNarration: { ...currentRoom.audioNarration, transcript: e.target.value },
-                      };
-                      setMuseums({
-                        ...museums,
-                        [selectedMuseumId]: { ...currentMuseum, rooms: nextRooms },
-                      });
-                    }
-                  }}
-                  className="w-full bg-slate-900 border border-slate-700 rounded-xl p-3 text-xs sm:text-sm text-white focus:outline-none focus:border-cyan-400 leading-relaxed"
-                />
-              </div>
-            </div>
-          )}
-
-          {/* TAB 4: FAQ */}
-          {activeTab === "faq" && (
-            <div className="max-w-4xl w-full mx-auto space-y-6">
-              {/* FAQ Section */}
-              <div className="space-y-4 bg-slate-900/60 border border-slate-800 p-4 sm:p-5 rounded-2xl">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <h3 className="text-sm font-bold text-white flex items-center gap-2">
-                      <MessageSquare size={16} className="text-cyan-400" />
-                      Danh Sách Câu Hỏi Thường Gặp (FAQ) & Câu Trả Lời
-                    </h3>
-                    <p className="text-xs text-slate-400 mt-0.5">
-                      Thêm câu hỏi và câu trả lời chi tiết để AI hoặc hệ thống giải đáp ngay cho người xem.
-                    </p>
-                  </div>
+                {/* Sub-Tabs: Sửa Tiêu Đề Chuyên Đề | Media | Nội Dung | Đố Vui */}
+                <div className="flex items-center gap-2 border-b border-slate-800 pb-2 overflow-x-auto no-scrollbar">
                   <button
-                    onClick={() => {
-                      const newFaq = {
-                        id: "faq-" + Date.now(),
-                        question: "",
-                        answer: "",
-                      };
-                      if (adminSection === "solar" && currentSpace) {
-                        const existing = currentSpace.aiContext.faqList || [];
-                        setSpaces({
-                          ...spaces,
-                          [selectedSpaceId]: {
-                            ...currentSpace,
-                            aiContext: { ...currentSpace.aiContext, faqList: [...existing, newFaq] },
-                          },
-                        });
-                      } else if (currentMuseum && currentRoom) {
-                        const existing = currentRoom.aiGuide.faqList || [];
-                        const nextRooms = { ...currentMuseum.rooms };
-                        nextRooms[selectedRoomId] = {
-                          ...currentRoom,
-                          aiGuide: { ...currentRoom.aiGuide, faqList: [...existing, newFaq] },
-                        };
-                        setMuseums({
-                          ...museums,
-                          [selectedMuseumId]: { ...currentMuseum, rooms: nextRooms },
-                        });
-                      }
-                      showToast("Đã thêm một mục FAQ mới!");
-                    }}
-                    className="flex items-center gap-1 px-3 py-1.5 rounded-xl bg-cyan-600 hover:bg-cyan-500 text-white font-bold text-xs shadow-md transition"
+                    onClick={() => setActiveTab("room")}
+                    className={`flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-bold whitespace-nowrap transition ${
+                      activeTab === "room"
+                        ? "bg-purple-600 text-white shadow-md shadow-purple-600/30"
+                        : "text-slate-400 hover:text-white hover:bg-slate-800"
+                    }`}
                   >
-                    <Plus size={14} /> Thêm FAQ
+                    <Edit3 size={14} />
+                    <span>1. Sửa Tiêu Đề Chuyên Đề</span>
+                  </button>
+
+                  <button
+                    onClick={() => setActiveTab("media")}
+                    className={`flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-bold whitespace-nowrap transition ${
+                      activeTab === "media"
+                        ? "bg-cyan-500 text-white shadow-md shadow-cyan-500/20"
+                        : "text-slate-400 hover:text-white hover:bg-slate-800"
+                    }`}
+                  >
+                    <Video size={14} />
+                    <span>2. Ảnh & Video YouTube</span>
+                  </button>
+
+                  <button
+                    onClick={() => setActiveTab("content")}
+                    className={`flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-bold whitespace-nowrap transition ${
+                      activeTab === "content"
+                        ? "bg-cyan-500 text-white shadow-md shadow-cyan-500/20"
+                        : "text-slate-400 hover:text-white hover:bg-slate-800"
+                    }`}
+                  >
+                    <BookOpen size={14} />
+                    <span>3. Bài Học Dễ Hiểu</span>
+                  </button>
+
+                  <button
+                    onClick={() => setActiveTab("quiz")}
+                    className={`flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-bold whitespace-nowrap transition ${
+                      activeTab === "quiz"
+                        ? "bg-cyan-500 text-white shadow-md shadow-cyan-500/20"
+                        : "text-slate-400 hover:text-white hover:bg-slate-800"
+                    }`}
+                  >
+                    <HelpCircle size={14} />
+                    <span>4. Đố Vui Trắc Nghiệm ({currentTopic.quizQuestions?.length || 0})</span>
                   </button>
                 </div>
 
-                <div className="space-y-3 pt-2">
-                  {((adminSection === "solar"
-                    ? currentSpace?.aiContext.faqList
-                    : currentRoom?.aiGuide.faqList) || []).length === 0 && (
-                    <div className="text-center py-6 text-xs text-slate-500 bg-slate-950/40 rounded-xl border border-dashed border-slate-800">
-                      Chưa có câu hỏi FAQ nào. Bấm &quot;Thêm FAQ&quot; ở trên để tạo câu hỏi đầu tiên.
-                    </div>
-                  )}
+                {/* TAB 0: SỬA TIÊU ĐỀ & THÔNG TIN CHUYÊN ĐỀ */}
+                {activeTab === "room" && currentRoom && (
+                  <div className="space-y-4 pt-2">
+                    <div className="p-4 sm:p-5 bg-slate-950/80 rounded-2xl border border-slate-800 space-y-4">
+                      <div className="border-b border-slate-800 pb-3">
+                        <h3 className="text-sm sm:text-base font-bold text-white flex items-center gap-2">
+                          <Edit3 size={18} className="text-purple-400" />
+                          <span>Chỉnh Sửa Tiêu Đề & Thông Tin Chuyên Đề Khám Phá</span>
+                        </h3>
+                        <p className="text-xs text-slate-400 mt-0.5">
+                          Thay đổi tiêu đề chuyên đề, khẩu hiệu và phần mô tả tổng quan hiển thị cho học sinh.
+                        </p>
+                      </div>
 
-                  {((adminSection === "solar"
-                    ? currentSpace?.aiContext.faqList
-                    : currentRoom?.aiGuide.faqList) || []).map((faq, idx) => (
-                    <div
-                      key={faq.id || `faq-${idx}`}
-                      className="p-3.5 rounded-xl bg-slate-950/80 border border-slate-800 space-y-2 relative group hover:border-cyan-500/40 transition"
-                    >
-                      <div className="flex items-center justify-between gap-2">
-                        <span className="text-[11px] font-bold text-cyan-400 flex items-center gap-1">
-                          #{idx + 1} Câu Hỏi FAQ
-                        </span>
-                        <button
-                          onClick={() => {
-                            if (adminSection === "solar" && currentSpace) {
-                              const next = (currentSpace.aiContext.faqList || []).filter((_, i) => i !== idx);
-                              setSpaces({
-                                ...spaces,
-                                [selectedSpaceId]: {
-                                  ...currentSpace,
-                                  aiContext: { ...currentSpace.aiContext, faqList: next },
-                                },
-                              });
-                            } else if (currentMuseum && currentRoom) {
-                              const next = (currentRoom.aiGuide.faqList || []).filter((_, i) => i !== idx);
-                              const nextRooms = { ...currentMuseum.rooms };
-                              nextRooms[selectedRoomId] = {
-                                ...currentRoom,
-                                aiGuide: { ...currentRoom.aiGuide, faqList: next },
-                              };
-                              setMuseums({
-                                ...museums,
-                                [selectedMuseumId]: { ...currentMuseum, rooms: nextRooms },
-                              });
+                      <div className="space-y-3.5">
+                        <div>
+                          <label className="block text-xs font-bold text-slate-300 mb-1">
+                            Tiêu Đề Chuyên Đề Khám Phá:
+                          </label>
+                          <input
+                            type="text"
+                            value={currentRoom.title}
+                            placeholder="Nhập tiêu đề chuyên đề..."
+                            onChange={(e) => updateCurrentRoom({ title: e.target.value })}
+                            className="w-full bg-slate-900 border border-slate-700 rounded-xl px-3.5 py-2.5 text-xs sm:text-sm text-white focus:outline-none focus:border-purple-400 font-bold"
+                          />
+                        </div>
+
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                          <div>
+                            <label className="block text-xs font-semibold text-slate-400 mb-1">
+                              Khẩu Hiệu / Phụ Đề Chuyên Đề:
+                            </label>
+                            <input
+                              type="text"
+                              value={currentRoom.subtitle}
+                              placeholder="Nhập phụ đề ngắn gọn..."
+                              onChange={(e) => updateCurrentRoom({ subtitle: e.target.value })}
+                              className="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-xs sm:text-sm text-white focus:outline-none focus:border-purple-400"
+                            />
+                          </div>
+                          <div>
+                            <label className="block text-xs font-semibold text-slate-400 mb-1">
+                              Huy Hiệu (Badge):
+                            </label>
+                            <input
+                              type="text"
+                              value={currentRoom.badge}
+                              placeholder="Vd: Khai Phá Không Gian..."
+                              onChange={(e) => updateCurrentRoom({ badge: e.target.value })}
+                              className="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-xs sm:text-sm text-white focus:outline-none focus:border-purple-400"
+                            />
+                          </div>
+                        </div>
+
+                        <div>
+                          <label className="block text-xs font-semibold text-slate-400 mb-1">
+                            Mô Tả Tổng Quan Chuyên Đề (Hiển thị đầu trang chuyên đề):
+                          </label>
+                          <textarea
+                            rows={3}
+                            value={currentRoom.description}
+                            placeholder="Mô tả nội dung chuyên đề..."
+                            onChange={(e) => updateCurrentRoom({ description: e.target.value })}
+                            className="w-full bg-slate-900 border border-slate-700 rounded-xl p-3 text-xs sm:text-sm text-white focus:outline-none focus:border-purple-400 leading-relaxed"
+                          />
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {/* TAB 1: MEDIA (YOUTUBE & IMAGE LINK) */}
+                {activeTab === "media" && (
+                  <div className="space-y-6 pt-2">
+                    {/* Notice */}
+                    <div className="p-3.5 rounded-2xl bg-cyan-950/40 border border-cyan-800/60 text-xs text-cyan-200 flex items-start gap-2.5">
+                      <Info size={16} className="text-cyan-400 shrink-0 mt-0.5" />
+                      <span>
+                        Hệ thống hoạt động theo nguyên tắc <strong>liên kết trực tiếp</strong>:
+                        Bạn chỉ cần dán <strong>link video YouTube</strong> hoặc <strong>URL hình ảnh</strong> từ internet mà không cần tốn dung lượng upload file lên máy chủ.
+                      </span>
+                    </div>
+
+                    {/* Section: YouTube Video */}
+                    <div className="space-y-3 p-4 bg-slate-950/80 rounded-2xl border border-slate-800">
+                      <div className="flex items-center justify-between">
+                        <label className="text-xs font-bold text-white flex items-center gap-2">
+                          <Video size={16} className="text-red-500" />
+                          <span>Link Video YouTube (Không cần upload):</span>
+                        </label>
+                        {currentTopic.youtubeUrl && (
+                          <a
+                            href={currentTopic.youtubeUrl}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="text-[11px] text-cyan-400 hover:underline flex items-center gap-1"
+                          >
+                            <span>Xem trên YouTube</span>
+                            <ExternalLink size={12} />
+                          </a>
+                        )}
+                      </div>
+
+                      <div className="relative">
+                        <input
+                          type="text"
+                          placeholder="Dán link YouTube (vd: https://www.youtube.com/watch?v=FztR1y3_iP8 hoặc https://youtu.be/...)"
+                          value={currentTopic.youtubeUrl || ""}
+                          onChange={(e) =>
+                            updateCurrentTopic({ youtubeUrl: e.target.value })
+                          }
+                          className="w-full bg-slate-900 border border-slate-700 rounded-xl px-3.5 py-2.5 text-xs sm:text-sm text-white focus:outline-none focus:border-red-500"
+                        />
+                      </div>
+
+                      {/* YouTube Live Preview */}
+                      {previewYoutubeEmbed ? (
+                        <div className="space-y-2 pt-2">
+                          <p className="text-[11px] font-semibold text-slate-400">
+                            Khung Xem Trước Video YouTube:
+                          </p>
+                          <div className="relative aspect-video rounded-xl overflow-hidden bg-black border border-slate-800 shadow-md">
+                            <iframe
+                              src={previewYoutubeEmbed}
+                              title="YouTube Preview"
+                              className="w-full h-full border-0"
+                              allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                              allowFullScreen
+                            />
+                          </div>
+                        </div>
+                      ) : (
+                        <p className="text-[11px] text-slate-500 italic">
+                          Chưa có link video YouTube hoặc link chưa đúng định dạng.
+                        </p>
+                      )}
+                    </div>
+
+                    {/* Section: Cover Image URL */}
+                    <div className="space-y-3 p-4 bg-slate-950/80 rounded-2xl border border-slate-800">
+                      <label className="text-xs font-bold text-white flex items-center gap-2">
+                        <ImageIcon size={16} className="text-cyan-400" />
+                        <span>Link Hình Ảnh Thực Tế (URL trực tiếp):</span>
+                      </label>
+
+                      <input
+                        type="text"
+                        placeholder="Dán link ảnh (vd: https://images.unsplash.com/... hoặc ảnh từ NASA / Wikimedia)"
+                        value={currentTopic.coverImage || ""}
+                        onChange={(e) =>
+                          updateCurrentTopic({ coverImage: e.target.value })
+                        }
+                        className="w-full bg-slate-900 border border-slate-700 rounded-xl px-3.5 py-2.5 text-xs sm:text-sm text-white focus:outline-none focus:border-cyan-400"
+                      />
+
+                      {/* Image Preview */}
+                      {currentTopic.coverImage ? (
+                        <div className="space-y-2 pt-2">
+                          <p className="text-[11px] font-semibold text-slate-400">
+                            Xem Trước Hình Ảnh:
+                          </p>
+                          <div className="relative aspect-video max-h-64 rounded-xl overflow-hidden bg-slate-900 border border-slate-800">
+                            <img
+                              src={currentTopic.coverImage}
+                              alt="Cover Preview"
+                              className="w-full h-full object-cover"
+                              onError={(e) => {
+                                (e.target as HTMLElement).style.display = "none";
+                              }}
+                            />
+                          </div>
+                        </div>
+                      ) : (
+                        <p className="text-[11px] text-slate-500 italic">
+                          Chưa có link hình ảnh đính kèm.
+                        </p>
+                      )}
+                    </div>
+
+                    {/* Quick Preset Space Images Picker */}
+                    <div className="p-4 bg-slate-950/60 rounded-2xl border border-slate-800 space-y-2.5">
+                      <span className="text-xs font-bold text-slate-300 block">
+                        Gợi ý ảnh không gian chất lượng cao (Bấm để áp dụng nhanh):
+                      </span>
+                      <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                        {[
+                          {
+                            title: "Trái Đất từ quỹ đạo",
+                            url: "https://images.unsplash.com/photo-1451187580459-43490279c0fa?auto=format&fit=crop&w=1000&q=80",
+                          },
+                          {
+                            title: "Trạm không gian ISS",
+                            url: "https://images.unsplash.com/photo-1446776811953-b23d57bd21aa?auto=format&fit=crop&w=1000&q=80",
+                          },
+                          {
+                            title: "Sao Hỏa huyền bí",
+                            url: "https://images.unsplash.com/photo-1614728894747-a83421e2b9c9?auto=format&fit=crop&w=1000&q=80",
+                          },
+                          {
+                            title: "Mặt Trăng & Apollo",
+                            url: "https://images.unsplash.com/photo-1541185933-ef5d8ed016c2?auto=format&fit=crop&w=1000&q=80",
+                          },
+                          {
+                            title: "Hố Đen sâu thẳm",
+                            url: "https://images.unsplash.com/photo-1506703719100-a0f3a48c0f86?auto=format&fit=crop&w=1000&q=80",
+                          },
+                          {
+                            title: "Sao Neutron & Pulsar",
+                            url: "https://images.unsplash.com/photo-1543722530-d2c3201371e7?auto=format&fit=crop&w=1000&q=80",
+                          },
+                          {
+                            title: "Mưa Sao Băng",
+                            url: "https://images.unsplash.com/photo-1509198397868-475647b2a1e5?auto=format&fit=crop&w=1000&q=80",
+                          },
+                          {
+                            title: "Dải Ngân Hà",
+                            url: "https://images.unsplash.com/photo-1518709268805-4e9042af9f23?auto=format&fit=crop&w=1000&q=80",
+                          },
+                        ].map((preset, idx) => (
+                          <button
+                            key={idx}
+                            type="button"
+                            onClick={() =>
+                              updateCurrentTopic({ coverImage: preset.url })
                             }
-                            showToast("Đã xóa mục FAQ!");
+                            className="p-2 rounded-xl bg-slate-900 border border-slate-800 hover:border-cyan-400 text-left text-[11px] text-slate-300 hover:text-white transition flex flex-col gap-1"
+                          >
+                            <span className="font-semibold truncate">{preset.title}</span>
+                            <span className="text-[10px] text-cyan-400">Chọn ảnh này</span>
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {/* TAB 2: CONTENT (EXPLANATIONS & FUN FACTS) */}
+                {activeTab === "content" && (
+                  <div className="space-y-5 pt-2">
+                    {/* Basic Meta: Title, Subtitle, Emoji, Badge */}
+                    <div className="grid grid-cols-1 sm:grid-cols-4 gap-3">
+                      <div className="sm:col-span-2">
+                        <label className="block text-xs font-semibold text-slate-400 mb-1">
+                          Tiêu Đề Chủ Đề:
+                        </label>
+                        <input
+                          type="text"
+                          value={currentTopic.title}
+                          onChange={(e) =>
+                            updateCurrentTopic({ title: e.target.value })
+                          }
+                          className="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-xs sm:text-sm text-white focus:outline-none focus:border-cyan-400"
+                        />
+                      </div>
+
+                      <div>
+                        <label className="block text-xs font-semibold text-slate-400 mb-1">
+                          Huy Hiệu (Badge):
+                        </label>
+                        <input
+                          type="text"
+                          value={currentTopic.badge}
+                          onChange={(e) =>
+                            updateCurrentTopic({ badge: e.target.value })
+                          }
+                          className="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-xs sm:text-sm text-white focus:outline-none focus:border-cyan-400"
+                        />
+                      </div>
+
+                      <div>
+                        <label className="block text-xs font-semibold text-slate-400 mb-1">
+                          Biểu Tượng Emoji:
+                        </label>
+                        <input
+                          type="text"
+                          value={currentTopic.emoji}
+                          onChange={(e) =>
+                            updateCurrentTopic({ emoji: e.target.value })
+                          }
+                          className="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-xs sm:text-sm text-white focus:outline-none focus:border-cyan-400 text-center"
+                        />
+                      </div>
+                    </div>
+
+                    <div>
+                      <label className="block text-xs font-semibold text-slate-400 mb-1">
+                        Khẩu hiệu / Phụ đề ngắn gọn:
+                      </label>
+                      <input
+                        type="text"
+                        value={currentTopic.subtitle}
+                        onChange={(e) =>
+                          updateCurrentTopic({ subtitle: e.target.value })
+                        }
+                        className="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-xs sm:text-sm text-white focus:outline-none focus:border-cyan-400"
+                      />
+                    </div>
+
+                    {/* Summary */}
+                    <div>
+                      <label className="block text-xs font-semibold text-slate-400 mb-1">
+                        Tóm Tắt Dễ Hiểu (Hiển thị đầu bài học cho học sinh):
+                      </label>
+                      <textarea
+                        rows={2}
+                        value={currentTopic.summary}
+                        onChange={(e) =>
+                          updateCurrentTopic({ summary: e.target.value })
+                        }
+                        className="w-full bg-slate-950 border border-slate-700 rounded-xl p-3 text-xs sm:text-sm text-white focus:outline-none focus:border-cyan-400 leading-relaxed"
+                      />
+                    </div>
+
+                    {/* Detailed Explanation Paragraphs */}
+                    <div className="space-y-3 bg-slate-950/70 p-4 rounded-2xl border border-slate-800">
+                      <div className="flex items-center justify-between">
+                        <label className="text-xs font-bold text-white flex items-center gap-2">
+                          <BookOpen size={16} className="text-cyan-400" />
+                          <span>Các Đoạn Giải Thích Chi Tiết Cho Học Sinh:</span>
+                        </label>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            updateCurrentTopic({
+                              explanation: [
+                                ...currentTopic.explanation,
+                                "Thêm nội dung giải thích mới cho bài học...",
+                              ],
+                            });
                           }}
-                          className="p-1 rounded-lg text-red-400 hover:bg-red-950/50 hover:text-red-300 transition"
-                          title="Xóa FAQ này"
+                          className="text-xs font-bold text-cyan-400 hover:text-cyan-300 flex items-center gap-1"
                         >
-                          <Trash2 size={14} />
+                          <Plus size={14} /> Thêm đoạn
                         </button>
                       </div>
 
-                      <div>
-                        <label className="block text-[11px] font-semibold text-slate-400 mb-1">Câu hỏi:</label>
-                        <input
-                          type="text"
-                          placeholder="Nhập câu hỏi thường gặp..."
-                          value={faq.question}
-                          onChange={(e) => {
-                            if (adminSection === "solar" && currentSpace) {
-                              const next = [...(currentSpace.aiContext.faqList || [])];
-                              next[idx] = { ...next[idx], question: e.target.value };
-                              setSpaces({
-                                ...spaces,
-                                [selectedSpaceId]: {
-                                  ...currentSpace,
-                                  aiContext: { ...currentSpace.aiContext, faqList: next },
-                                },
-                              });
-                            } else if (currentMuseum && currentRoom) {
-                              const next = [...(currentRoom.aiGuide.faqList || [])];
-                              next[idx] = { ...next[idx], question: e.target.value };
-                              const nextRooms = { ...currentMuseum.rooms };
-                              nextRooms[selectedRoomId] = {
-                                ...currentRoom,
-                                aiGuide: { ...currentRoom.aiGuide, faqList: next },
-                              };
-                              setMuseums({
-                                ...museums,
-                                [selectedMuseumId]: { ...currentMuseum, rooms: nextRooms },
-                              });
-                            }
-                          }}
-                          className="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-cyan-400"
-                        />
-                      </div>
-
-                      <div>
-                        <label className="block text-[11px] font-semibold text-slate-400 mb-1">Câu trả lời:</label>
-                        <textarea
-                          rows={3}
-                          placeholder="Nhập câu trả lời giải thích cụ thể..."
-                          value={faq.answer}
-                          onChange={(e) => {
-                            if (adminSection === "solar" && currentSpace) {
-                              const next = [...(currentSpace.aiContext.faqList || [])];
-                              next[idx] = { ...next[idx], answer: e.target.value };
-                              setSpaces({
-                                ...spaces,
-                                [selectedSpaceId]: {
-                                  ...currentSpace,
-                                  aiContext: { ...currentSpace.aiContext, faqList: next },
-                                },
-                              });
-                            } else if (currentMuseum && currentRoom) {
-                              const next = [...(currentRoom.aiGuide.faqList || [])];
-                              next[idx] = { ...next[idx], answer: e.target.value };
-                              const nextRooms = { ...currentMuseum.rooms };
-                              nextRooms[selectedRoomId] = {
-                                ...currentRoom,
-                                aiGuide: { ...currentRoom.aiGuide, faqList: next },
-                              };
-                              setMuseums({
-                                ...museums,
-                                [selectedMuseumId]: { ...currentMuseum, rooms: nextRooms },
-                              });
-                            }
-                          }}
-                          className="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-cyan-400 leading-relaxed"
-                        />
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-
-              {/* Suggested Questions Section */}
-              <div className="space-y-4 bg-slate-900/60 border border-slate-800 p-4 sm:p-5 rounded-2xl">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <h3 className="text-sm font-bold text-white flex items-center gap-2">
-                      <BookOpen size={16} className="text-amber-400" />
-                      Bộ Câu Hỏi Gợi Ý Nhanh Cho Khách Tham Quan
-                    </h3>
-                    <p className="text-xs text-slate-400 mt-0.5">
-                      Các nút câu hỏi bấm nhanh hiển thị trên thanh gợi ý của khung chat AI.
-                    </p>
-                  </div>
-                  <button
-                    onClick={() => {
-                      if (adminSection === "solar" && currentSpace) {
-                        const existing = currentSpace.aiContext.suggestedQuestions || [];
-                        setSpaces({
-                          ...spaces,
-                          [selectedSpaceId]: {
-                            ...currentSpace,
-                            aiContext: { ...currentSpace.aiContext, suggestedQuestions: [...existing, ""] },
-                          },
-                        });
-                      } else if (currentMuseum && currentRoom) {
-                        const existing = currentRoom.aiGuide.suggestedQuestions || [];
-                        const nextRooms = { ...currentMuseum.rooms };
-                        nextRooms[selectedRoomId] = {
-                          ...currentRoom,
-                          aiGuide: { ...currentRoom.aiGuide, suggestedQuestions: [...existing, ""] },
-                        };
-                        setMuseums({
-                          ...museums,
-                          [selectedMuseumId]: { ...currentMuseum, rooms: nextRooms },
-                        });
-                      }
-                      showToast("Đã thêm ô câu hỏi gợi ý!");
-                    }}
-                    className="flex items-center gap-1 px-3 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 font-semibold text-xs border border-slate-700 transition"
-                  >
-                    <Plus size={14} /> Thêm Gợi Ý
-                  </button>
-                </div>
-
-                <div className="space-y-2 pt-2">
-                  {(adminSection === "solar"
-                    ? currentSpace?.aiContext.suggestedQuestions || []
-                    : currentRoom?.aiGuide.suggestedQuestions || []
-                  ).map((q, idx) => (
-                    <div key={`q-edit-${idx}`} className="flex items-center gap-2">
-                      <span className="text-[11px] font-mono text-slate-500 w-5">#{idx + 1}</span>
-                      <input
-                        type="text"
-                        placeholder="Nhập câu hỏi gợi ý nhanh..."
-                        value={q}
-                        onChange={(e) => {
-                          if (adminSection === "solar" && currentSpace) {
-                            const next = [...currentSpace.aiContext.suggestedQuestions];
-                            next[idx] = e.target.value;
-                            setSpaces({
-                              ...spaces,
-                              [selectedSpaceId]: {
-                                ...currentSpace,
-                                aiContext: { ...currentSpace.aiContext, suggestedQuestions: next },
-                              },
-                            });
-                          } else if (currentMuseum && currentRoom) {
-                            const next = [...currentRoom.aiGuide.suggestedQuestions];
-                            next[idx] = e.target.value;
-                            const nextRooms = { ...currentMuseum.rooms };
-                            nextRooms[selectedRoomId] = {
-                              ...currentRoom,
-                              aiGuide: { ...currentRoom.aiGuide, suggestedQuestions: next },
-                            };
-                            setMuseums({
-                              ...museums,
-                              [selectedMuseumId]: { ...currentMuseum, rooms: nextRooms },
-                            });
-                          }
-                        }}
-                        className="flex-1 bg-slate-800 border border-slate-700 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-cyan-400"
-                      />
-                      <button
-                        onClick={() => {
-                          if (adminSection === "solar" && currentSpace) {
-                            const next = currentSpace.aiContext.suggestedQuestions.filter((_, i) => i !== idx);
-                            setSpaces({
-                              ...spaces,
-                              [selectedSpaceId]: {
-                                ...currentSpace,
-                                aiContext: { ...currentSpace.aiContext, suggestedQuestions: next },
-                              },
-                            });
-                          } else if (currentMuseum && currentRoom) {
-                            const next = currentRoom.aiGuide.suggestedQuestions.filter((_, i) => i !== idx);
-                            const nextRooms = { ...currentMuseum.rooms };
-                            nextRooms[selectedRoomId] = {
-                              ...currentRoom,
-                              aiGuide: { ...currentRoom.aiGuide, suggestedQuestions: next },
-                            };
-                            setMuseums({
-                              ...museums,
-                              [selectedMuseumId]: { ...currentMuseum, rooms: nextRooms },
-                            });
-                          }
-                        }}
-                        className="p-2 rounded-xl text-slate-400 hover:text-red-400 hover:bg-slate-800 transition"
-                        title="Xóa gợi ý này"
-                      >
-                        <Trash2 size={14} />
-                      </button>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            </div>
-          )}
-
-          {/* TAB 5: DANH SÁCH HIỆN VẬT (CHỈ DÀNH CHO SKY LAB / BẢO TÀNG) */}
-          {activeTab === "hotspots" && adminSection === "museums" && currentRoom && (
-            <div className="max-w-4xl w-full mx-auto space-y-4">
-              <div className="space-y-4 bg-slate-900/60 border border-slate-800 p-4 sm:p-5 rounded-2xl">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <h3 className="text-sm font-bold text-white flex items-center gap-2">
-                      <BookOpen size={16} className="text-cyan-400" />
-                      Chỉnh Sửa Chi Tiết & Tải Ảnh Cổ Vật / Điểm Trưng Bày
-                    </h3>
-                    <p className="text-xs text-slate-400 mt-0.5">
-                      Cập nhật tiêu đề, nội dung lịch sử, kiến thức và tải ảnh đính kèm (hoặc dán URL ảnh) hiển thị khi bấm vào điểm neo 360°.
-                    </p>
-                  </div>
-                </div>
-
-                <div className="space-y-4">
-                  {(currentRoom.artifacts || []).length === 0 && (
-                    <div className="text-center py-6 text-xs text-slate-500 bg-slate-950/40 rounded-xl border border-dashed border-slate-800">
-                      Chưa có cổ vật nào. Hãy qua tab &quot;1. Chấm Tọa Độ 360° Trực Quan&quot; để định vị cổ vật mới.
-                    </div>
-                  )}
-                  {(currentRoom.artifacts || []).map((art, idx) => (
-                      <div
-                        key={`art-edit-${art.id || idx}`}
-                        className="p-4 rounded-2xl bg-stone-950/80 border border-stone-800 space-y-3.5 relative group hover:border-amber-500/40 transition"
-                      >
-                        <div className="flex items-center justify-between gap-2 border-b border-stone-800 pb-2.5">
-                          <div className="flex items-center gap-2">
-                            <span className="w-6 h-6 rounded-lg bg-amber-500/20 text-amber-400 text-xs font-bold flex items-center justify-center">
-                              #{idx + 1}
-                            </span>
-                            <span className="text-xs font-bold text-amber-200">
-                              {art.thumbnailEmoji} {art.name || "Cổ vật"}
-                            </span>
-                            <span className="text-[10px] text-stone-400 font-mono bg-stone-900 px-2 py-0.5 rounded-full border border-stone-700">
-                              Pitch: {art.pitch}° | Yaw: {art.yaw}°
-                            </span>
-                          </div>
-                          <button
-                            onClick={() => {
-                              if (!currentMuseum) return;
-                              const nextArts = currentRoom.artifacts.filter((_, i) => i !== idx);
-                              const nextRooms = { ...currentMuseum.rooms };
-                              nextRooms[selectedRoomId] = { ...currentRoom, artifacts: nextArts };
-                              setMuseums({
-                                ...museums,
-                                [selectedMuseumId]: { ...currentMuseum, rooms: nextRooms },
-                              });
-                              showToast("Đã xóa cổ vật!");
+                      {currentTopic.explanation.map((para, pIdx) => (
+                        <div key={pIdx} className="flex items-start gap-2">
+                          <span className="text-[11px] font-mono text-slate-500 mt-2">
+                            #{pIdx + 1}
+                          </span>
+                          <textarea
+                            rows={3}
+                            value={para}
+                            onChange={(e) => {
+                              const nextExp = [...currentTopic.explanation];
+                              nextExp[pIdx] = e.target.value;
+                              updateCurrentTopic({ explanation: nextExp });
                             }}
-                            className="p-1.5 rounded-lg text-red-400 hover:bg-red-950/50 hover:text-red-300 transition"
-                            title="Xóa cổ vật này"
+                            className="flex-1 bg-slate-900 border border-slate-700 rounded-xl p-2.5 text-xs sm:text-sm text-white focus:outline-none focus:border-cyan-400 leading-relaxed"
+                          />
+                          <button
+                            type="button"
+                            onClick={() => {
+                              const nextExp = currentTopic.explanation.filter(
+                                (_, i) => i !== pIdx
+                              );
+                              updateCurrentTopic({ explanation: nextExp });
+                            }}
+                            className="p-2 text-slate-500 hover:text-rose-400 transition"
+                            title="Xóa đoạn này"
                           >
-                            <Trash2 size={15} />
+                            <Trash2 size={14} />
                           </button>
                         </div>
+                      ))}
+                    </div>
 
-                        {/* Tên & Niên đại & Icon */}
-                        <div className="grid grid-cols-1 sm:grid-cols-4 gap-3">
-                          <div className="sm:col-span-2">
-                            <label className="block text-[11px] font-semibold text-stone-400 mb-1">Tên Hiện Vật / Cổ Vật:</label>
-                            <input
-                              type="text"
-                              value={art.name}
-                              onChange={(e) => {
-                                const nextArts = [...currentRoom.artifacts];
-                                nextArts[idx] = { ...nextArts[idx], name: e.target.value };
-                                const nextRooms = { ...currentMuseum.rooms };
-                                nextRooms[selectedRoomId] = { ...currentRoom, artifacts: nextArts };
-                                setMuseums({
-                                  ...museums,
-                                  [selectedMuseumId]: { ...currentMuseum, rooms: nextRooms },
-                                });
-                              }}
-                              className="w-full bg-stone-900 border border-stone-700 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-amber-400"
-                            />
-                          </div>
-                          <div>
-                            <label className="block text-[11px] font-semibold text-stone-400 mb-1">Niên đại / Thời kỳ:</label>
-                            <input
-                              type="text"
-                              placeholder="Vd: Thế kỷ VII TCN..."
-                              value={art.era || ""}
-                              onChange={(e) => {
-                                const nextArts = [...currentRoom.artifacts];
-                                nextArts[idx] = { ...nextArts[idx], era: e.target.value };
-                                const nextRooms = { ...currentMuseum.rooms };
-                                nextRooms[selectedRoomId] = { ...currentRoom, artifacts: nextArts };
-                                setMuseums({
-                                  ...museums,
-                                  [selectedMuseumId]: { ...currentMuseum, rooms: nextRooms },
-                                });
-                              }}
-                              className="w-full bg-stone-900 border border-stone-700 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-amber-400"
-                            />
-                          </div>
-                          <div>
-                            <label className="block text-[11px] font-semibold text-stone-400 mb-1">Biểu tượng Emoji:</label>
-                            <input
-                              type="text"
-                              value={art.thumbnailEmoji || "🏺"}
-                              onChange={(e) => {
-                                const nextArts = [...currentRoom.artifacts];
-                                nextArts[idx] = { ...nextArts[idx], thumbnailEmoji: e.target.value };
-                                const nextRooms = { ...currentMuseum.rooms };
-                                nextRooms[selectedRoomId] = { ...currentRoom, artifacts: nextArts };
-                                setMuseums({
-                                  ...museums,
-                                  [selectedMuseumId]: { ...currentMuseum, rooms: nextRooms },
-                                });
-                              }}
-                              className="w-full bg-stone-900 border border-stone-700 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-amber-400 text-center"
-                            />
-                          </div>
-                        </div>
-
-                        {/* Tóm tắt & Câu chuyện lịch sử */}
-                        <div className="space-y-2">
-                          <div>
-                            <label className="block text-[11px] font-semibold text-stone-400 mb-1">Tóm tắt ngắn (Short Summary):</label>
-                            <input
-                              type="text"
-                              value={art.shortSummary}
-                              onChange={(e) => {
-                                const nextArts = [...currentRoom.artifacts];
-                                nextArts[idx] = { ...nextArts[idx], shortSummary: e.target.value };
-                                const nextRooms = { ...currentMuseum.rooms };
-                                nextRooms[selectedRoomId] = { ...currentRoom, artifacts: nextArts };
-                                setMuseums({
-                                  ...museums,
-                                  [selectedMuseumId]: { ...currentMuseum, rooms: nextRooms },
-                                });
-                              }}
-                              className="w-full bg-stone-900 border border-stone-700 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-amber-400"
-                            />
-                          </div>
-                          <div>
-                            <label className="block text-[11px] font-semibold text-stone-400 mb-1">Câu chuyện lịch sử chi tiết:</label>
-                            <textarea
-                              rows={3}
-                              value={art.historicalStory}
-                              onChange={(e) => {
-                                const nextArts = [...currentRoom.artifacts];
-                                nextArts[idx] = { ...nextArts[idx], historicalStory: e.target.value };
-                                const nextRooms = { ...currentMuseum.rooms };
-                                nextRooms[selectedRoomId] = { ...currentRoom, artifacts: nextArts };
-                                setMuseums({
-                                  ...museums,
-                                  [selectedMuseumId]: { ...currentMuseum, rooms: nextRooms },
-                                });
-                              }}
-                              className="w-full bg-stone-900 border border-stone-700 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-amber-400 leading-relaxed"
-                            />
-                          </div>
-                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                            <div>
-                              <label className="block text-[11px] font-semibold text-stone-400 mb-1">Bí ẩn lịch sử (Fun Fact):</label>
-                              <textarea
-                                rows={2}
-                                value={art.funFact}
-                                onChange={(e) => {
-                                  const nextArts = [...currentRoom.artifacts];
-                                  nextArts[idx] = { ...nextArts[idx], funFact: e.target.value };
-                                  const nextRooms = { ...currentMuseum.rooms };
-                                  nextRooms[selectedRoomId] = { ...currentRoom, artifacts: nextArts };
-                                  setMuseums({
-                                    ...museums,
-                                    [selectedMuseumId]: { ...currentMuseum, rooms: nextRooms },
-                                  });
-                                }}
-                                className="w-full bg-stone-900 border border-stone-700 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-amber-400 leading-relaxed"
-                              />
-                            </div>
-                            <div>
-                              <label className="block text-[11px] font-semibold text-stone-400 mb-1">Lời đọc thuyết minh (Audio Guide Text):</label>
-                              <textarea
-                                rows={2}
-                                value={art.audioGuideText}
-                                onChange={(e) => {
-                                  const nextArts = [...currentRoom.artifacts];
-                                  nextArts[idx] = { ...nextArts[idx], audioGuideText: e.target.value };
-                                  const nextRooms = { ...currentMuseum.rooms };
-                                  nextRooms[selectedRoomId] = { ...currentRoom, artifacts: nextArts };
-                                  setMuseums({
-                                    ...museums,
-                                    [selectedMuseumId]: { ...currentMuseum, rooms: nextRooms },
-                                  });
-                                }}
-                                className="w-full bg-stone-900 border border-stone-700 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-amber-400 leading-relaxed"
-                              />
-                            </div>
-                          </div>
-                        </div>
-
-                        {/* Hình ảnh cổ vật thực tế (Upload hoặc URL với bộ nén ảnh tự động) */}
-                        <ImageUploader
-                          label="Ảnh Chụp Cổ Vật Thực Tế Đính Kèm:"
-                          value={art.image}
-                          onChange={(url) => {
-                            const nextArts = [...currentRoom.artifacts];
-                            nextArts[idx] = { ...nextArts[idx], image: url };
-                            const nextRooms = { ...currentMuseum.rooms };
-                            nextRooms[selectedRoomId] = { ...currentRoom, artifacts: nextArts };
-                            setMuseums({
-                              ...museums,
-                              [selectedMuseumId]: { ...currentMuseum, rooms: nextRooms },
+                    {/* Fun facts */}
+                    <div className="space-y-3 bg-slate-950/70 p-4 rounded-2xl border border-slate-800">
+                      <div className="flex items-center justify-between">
+                        <label className="text-xs font-bold text-white flex items-center gap-2">
+                          <Lightbulb size={16} className="text-amber-400" />
+                          <span>Bí Mật Thú Vị (&quot;Em Có Biết?&quot;):</span>
+                        </label>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            updateCurrentTopic({
+                              funFacts: [
+                                ...currentTopic.funFacts,
+                                "Sự thật bất ngờ mới về vũ trụ...",
+                              ],
                             });
                           }}
-                          accentColor="amber"
-                          sampleCategory="museum"
-                        />
+                          className="text-xs font-bold text-amber-400 hover:text-amber-300 flex items-center gap-1"
+                        >
+                          <Plus size={14} /> Thêm sự thật
+                        </button>
                       </div>
-                    ))}
-                </div>
+
+                      {currentTopic.funFacts.map((ff, ffIdx) => (
+                        <div key={ffIdx} className="flex items-start gap-2">
+                          <span className="text-amber-400 font-bold mt-1.5">💡</span>
+                          <textarea
+                            rows={2}
+                            value={ff}
+                            onChange={(e) => {
+                              const nextFF = [...currentTopic.funFacts];
+                              nextFF[ffIdx] = e.target.value;
+                              updateCurrentTopic({ funFacts: nextFF });
+                            }}
+                            className="flex-1 bg-slate-900 border border-slate-700 rounded-xl p-2.5 text-xs sm:text-sm text-white focus:outline-none focus:border-amber-400 leading-relaxed"
+                          />
+                          <button
+                            type="button"
+                            onClick={() => {
+                              const nextFF = currentTopic.funFacts.filter(
+                                (_, i) => i !== ffIdx
+                              );
+                              updateCurrentTopic({ funFacts: nextFF });
+                            }}
+                            className="p-2 text-slate-500 hover:text-rose-400 transition"
+                            title="Xóa mục này"
+                          >
+                            <Trash2 size={14} />
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* TAB 3: QUIZ (MINI TEST FOR STUDENTS) */}
+                {activeTab === "quiz" && (
+                  <div className="space-y-6 pt-2">
+                    {/* Header info & Add question button */}
+                    <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 p-4 bg-slate-950/80 rounded-2xl border border-slate-800">
+                      <div>
+                        <h3 className="text-sm sm:text-base font-bold text-white flex items-center gap-2">
+                          <HelpCircle size={18} className="text-indigo-400" />
+                          <span>Bộ Câu Hỏi Trắc Nghiệm Đố Vui Cho Học Sinh</span>
+                        </h3>
+                        <p className="text-xs text-slate-400 mt-0.5">
+                          Bạn có thể thêm nhiều câu hỏi trắc nghiệm để học sinh thử thách và ôn tập kiến thức sau bài học.
+                        </p>
+                      </div>
+
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const existing = currentTopic.quizQuestions || [];
+                          const newQ = {
+                            question: `Câu hỏi trắc nghiệm số ${existing.length + 1}?`,
+                            options: [
+                              "Phương án A",
+                              "Phương án B",
+                              "Phương án C",
+                              "Phương án D",
+                            ],
+                            answerIndex: 0,
+                            explanation: "Giải thích lý do vì sao đáp án này là chính xác...",
+                          };
+                          updateCurrentTopic({
+                            quizQuestions: [...existing, newQ],
+                          });
+                          showToast(`Đã thêm câu hỏi số #${existing.length + 1}!`);
+                        }}
+                        className="flex items-center gap-1.5 px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-xs shadow-md shadow-indigo-600/30 transition shrink-0"
+                      >
+                        <Plus size={15} />
+                        <span>Thêm Câu Hỏi Mới</span>
+                      </button>
+                    </div>
+
+                    {/* Empty State */}
+                    {(!currentTopic.quizQuestions || currentTopic.quizQuestions.length === 0) && (
+                      <div className="text-center py-10 px-4 rounded-2xl bg-slate-950/60 border border-dashed border-slate-800 space-y-3">
+                        <div className="w-12 h-12 rounded-2xl bg-indigo-950/60 border border-indigo-800/60 text-indigo-400 flex items-center justify-center mx-auto text-xl">
+                          🎯
+                        </div>
+                        <h4 className="text-sm font-bold text-slate-300">
+                          Chưa có câu hỏi trắc nghiệm nào cho chủ đề này
+                        </h4>
+                        <p className="text-xs text-slate-500 max-w-md mx-auto">
+                          Bấm nút bên dưới để tạo câu hỏi trắc nghiệm đầu tiên cho học sinh cùng thử tài.
+                        </p>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            const newQ = {
+                              question: "Nhập câu hỏi trắc nghiệm đầu tiên ở đây...",
+                              options: ["Phương án A", "Phương án B", "Phương án C", "Phương án D"],
+                              answerIndex: 0,
+                              explanation: "Giải thích đáp án đúng...",
+                            };
+                            updateCurrentTopic({ quizQuestions: [newQ] });
+                            showToast("Đã thêm câu hỏi đầu tiên!");
+                          }}
+                          className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-xs transition"
+                        >
+                          <Plus size={14} />
+                          <span>Tạo Câu Hỏi Đầu Tiên</span>
+                        </button>
+                      </div>
+                    )}
+
+                    {/* Questions List */}
+                    <div className="space-y-5">
+                      {(currentTopic.quizQuestions || []).map((quiz, qIdx) => (
+                        <div
+                          key={`quiz-item-${qIdx}`}
+                          className="p-4 sm:p-5 bg-slate-950/90 rounded-2xl border border-slate-800 space-y-4 shadow-lg hover:border-indigo-500/40 transition relative group"
+                        >
+                          {/* Top Question Toolbar */}
+                          <div className="flex items-center justify-between border-b border-slate-800 pb-3 gap-2">
+                            <div className="flex items-center gap-2">
+                              <span className="w-7 h-7 rounded-lg bg-indigo-500/20 text-indigo-300 border border-indigo-500/30 font-bold text-xs flex items-center justify-center">
+                                #{qIdx + 1}
+                              </span>
+                              <span className="text-xs font-bold text-slate-200">
+                                Câu Hỏi Số {qIdx + 1}
+                              </span>
+                              <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-emerald-950/70 text-emerald-300 border border-emerald-800/60">
+                                Đáp án đúng: {String.fromCharCode(65 + quiz.answerIndex)}
+                              </span>
+                            </div>
+
+                            <button
+                              type="button"
+                              onClick={() => {
+                                if (confirm(`Bạn có chắc muốn xóa câu hỏi #${qIdx + 1}?`)) {
+                                  const nextQ = (currentTopic.quizQuestions || []).filter(
+                                    (_, i) => i !== qIdx
+                                  );
+                                  updateCurrentTopic({ quizQuestions: nextQ });
+                                  showToast(`Đã xóa câu hỏi #${qIdx + 1}!`);
+                                }
+                              }}
+                              className="p-1.5 rounded-lg text-slate-500 hover:text-rose-400 hover:bg-slate-900 transition flex items-center gap-1 text-xs"
+                              title="Xóa câu hỏi này"
+                            >
+                              <Trash2 size={14} />
+                              <span className="hidden sm:inline">Xóa câu này</span>
+                            </button>
+                          </div>
+
+                          {/* Question text */}
+                          <div>
+                            <label className="block text-xs font-semibold text-slate-400 mb-1">
+                              Nội dung câu hỏi:
+                            </label>
+                            <input
+                              type="text"
+                              value={quiz.question}
+                              placeholder="Nhập nội dung câu hỏi..."
+                              onChange={(e) => {
+                                const nextQ = [...(currentTopic.quizQuestions || [])];
+                                nextQ[qIdx] = { ...nextQ[qIdx], question: e.target.value };
+                                updateCurrentTopic({ quizQuestions: nextQ });
+                              }}
+                              className="w-full bg-slate-900 border border-slate-700 rounded-xl px-3.5 py-2.5 text-xs sm:text-sm text-white focus:outline-none focus:border-indigo-400 font-medium"
+                            />
+                          </div>
+
+                          {/* Options */}
+                          <div className="space-y-2">
+                            <label className="block text-xs font-semibold text-slate-400">
+                              4 Phương án trả lời (Bấm vào chữ cái tròn để chọn đáp án ĐÚNG):
+                            </label>
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                              {quiz.options.map((opt, optIdx) => {
+                                const isCorrect = quiz.answerIndex === optIdx;
+                                return (
+                                  <div
+                                    key={optIdx}
+                                    className={`flex items-center gap-2 p-1.5 rounded-xl border transition ${
+                                      isCorrect
+                                        ? "bg-emerald-950/30 border-emerald-500/50"
+                                        : "bg-slate-900/60 border-slate-800"
+                                    }`}
+                                  >
+                                    <button
+                                      type="button"
+                                      onClick={() => {
+                                        const nextQ = [...(currentTopic.quizQuestions || [])];
+                                        nextQ[qIdx] = {
+                                          ...nextQ[qIdx],
+                                          answerIndex: optIdx,
+                                        };
+                                        updateCurrentTopic({ quizQuestions: nextQ });
+                                        showToast(`Đã đặt đáp án ${String.fromCharCode(65 + optIdx)} là đáp án đúng!`);
+                                      }}
+                                      className={`w-7 h-7 rounded-lg border flex items-center justify-center font-bold text-xs shrink-0 transition ${
+                                        isCorrect
+                                          ? "bg-emerald-500 border-emerald-400 text-white shadow-md shadow-emerald-500/30"
+                                          : "border-slate-700 text-slate-400 hover:border-slate-500 hover:text-white"
+                                      }`}
+                                      title={
+                                        isCorrect
+                                          ? "Đây là đáp án đúng"
+                                          : `Bấm để chọn đáp án ${String.fromCharCode(65 + optIdx)} là ĐÚNG`
+                                      }
+                                    >
+                                      {String.fromCharCode(65 + optIdx)}
+                                    </button>
+                                    <input
+                                      type="text"
+                                      value={opt}
+                                      placeholder={`Nhập phương án ${String.fromCharCode(65 + optIdx)}...`}
+                                      onChange={(e) => {
+                                        const nextQ = [...(currentTopic.quizQuestions || [])];
+                                        const nextOpts = [...nextQ[qIdx].options];
+                                        nextOpts[optIdx] = e.target.value;
+                                        nextQ[qIdx] = {
+                                          ...nextQ[qIdx],
+                                          options: nextOpts,
+                                        };
+                                        updateCurrentTopic({ quizQuestions: nextQ });
+                                      }}
+                                      className="flex-1 bg-transparent border-0 px-2 py-1 text-xs sm:text-sm text-white focus:outline-none"
+                                    />
+                                  </div>
+                                );
+                              })}
+                            </div>
+                          </div>
+
+                          {/* Explanation */}
+                          <div>
+                            <label className="block text-xs font-semibold text-slate-400 mb-1">
+                              Lời giải thích kiến thức (Hiển thị sau khi học sinh trả lời):
+                            </label>
+                            <textarea
+                              rows={2}
+                              value={quiz.explanation}
+                              placeholder="Giải thích vì sao đáp án này đúng để giúp học sinh hiểu sâu bài học..."
+                              onChange={(e) => {
+                                const nextQ = [...(currentTopic.quizQuestions || [])];
+                                nextQ[qIdx] = {
+                                  ...nextQ[qIdx],
+                                  explanation: e.target.value,
+                                };
+                                updateCurrentTopic({ quizQuestions: nextQ });
+                              }}
+                              className="w-full bg-slate-900 border border-slate-700 rounded-xl p-2.5 text-xs sm:text-sm text-white focus:outline-none focus:border-indigo-400 leading-relaxed"
+                            />
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+
+                    {/* Bottom Add button */}
+                    {(currentTopic.quizQuestions || []).length > 0 && (
+                      <div className="flex justify-center pt-2">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            const existing = currentTopic.quizQuestions || [];
+                            const newQ = {
+                              question: `Câu hỏi trắc nghiệm số ${existing.length + 1}?`,
+                              options: [
+                                "Phương án A",
+                                "Phương án B",
+                                "Phương án C",
+                                "Phương án D",
+                              ],
+                              answerIndex: 0,
+                              explanation: "Giải thích lý do vì sao đáp án này là chính xác...",
+                            };
+                            updateCurrentTopic({
+                              quizQuestions: [...existing, newQ],
+                            });
+                            showToast(`Đã thêm câu hỏi số #${existing.length + 1}!`);
+                          }}
+                          className="flex items-center gap-2 px-5 py-2.5 rounded-2xl bg-indigo-600/20 hover:bg-indigo-600/30 text-indigo-300 border border-indigo-500/40 text-xs font-bold transition shadow"
+                        >
+                          <Plus size={15} />
+                          <span>Thêm Một Câu Hỏi Khác Cho Chủ Đề Này</span>
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                )}
               </div>
+            </div>
+          ) : (
+            <div className="h-full flex items-center justify-center text-slate-500 text-sm">
+              Chọn một chủ đề từ cột bên trái để bắt đầu chỉnh sửa.
             </div>
           )}
         </main>

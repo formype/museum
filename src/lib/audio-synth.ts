@@ -4,8 +4,8 @@ class SpaceAudioManager {
   private synthVoice: SpeechSynthesisVoice | null = null;
   private currentUtterance: SpeechSynthesisUtterance | null = null;
   private currentAudioElement: HTMLAudioElement | null = null;
+  private currentBlobUrl: string | null = null;
   private audioCtx: AudioContext | null = null;
-  private ambientGain: GainNode | null = null;
   private isAmbientPlaying = false;
   private useOnlineAiVoice = true;
   private activeSessionId = 0;
@@ -36,11 +36,7 @@ class SpaceAudioManager {
     );
 
     const anyVi = voices.find((v) => v.lang.startsWith("vi") || v.lang.includes("VI"));
-    const naturalVoice = voices.find(
-      (v) => (v.name.includes("Natural") || v.name.includes("Online")) && v.name.includes("Female")
-    );
-
-    this.synthVoice = femaleVi || anyVi || naturalVoice || voices[0] || null;
+    this.synthVoice = femaleVi || anyVi || null;
   }
 
   public setUseOnlineVoice(enabled: boolean) {
@@ -51,7 +47,6 @@ class SpaceAudioManager {
     return this.useOnlineAiVoice;
   }
 
-  // Ambient drone disabled to prevent low-frequency buzzing noise on speakers/earbuds
   public startAmbientSound() {
     this.isAmbientPlaying = false;
   }
@@ -64,8 +59,8 @@ class SpaceAudioManager {
     this.isAmbientPlaying = false;
   }
 
-  // High-fidelity Speech Synthesis with Natural Vietnamese Female Voice
-  public speakNarration(
+  // High-fidelity Speech Synthesis with Natural Vietnamese Female Voice (vi-VN-HoaiMyNeural)
+  public async speakNarration(
     text: string,
     onProgress?: (progressSec: number) => void,
     onEnd?: () => void
@@ -89,46 +84,67 @@ class SpaceAudioManager {
       return;
     }
 
-    // Try Natural AI Vietnamese Female Voice endpoint first
+    // Always prioritize the Natural Vietnamese Female AI Voice (vi-VN-HoaiMyNeural)
     if (this.useOnlineAiVoice) {
       try {
-        const audioUrl = `/api/tts?text=${encodeURIComponent(cleanText)}&voice=vi-VN-HoaiMyNeural`;
-        const audio = new Audio(audioUrl);
-        this.currentAudioElement = audio;
+        const response = await fetch("/api/tts", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            text: cleanText,
+            voice: "vi-VN-HoaiMyNeural",
+          }),
+        });
 
-        audio.ontimeupdate = () => {
+        if (this.activeSessionId !== sessionId) return;
+
+        if (response.ok) {
+          const blob = await response.blob();
           if (this.activeSessionId !== sessionId) return;
-          if (onProgress && audio.currentTime) {
-            onProgress(audio.currentTime);
-          }
-        };
 
-        audio.onended = () => {
-          if (this.activeSessionId !== sessionId) return;
-          this.currentAudioElement = null;
-          if (onEnd) onEnd();
-        };
+          const blobUrl = URL.createObjectURL(blob);
+          this.currentBlobUrl = blobUrl;
+          const audio = new Audio(blobUrl);
+          this.currentAudioElement = audio;
 
-        audio.onerror = () => {
-          // If this session was cancelled, don't trigger fallback
-          if (this.activeSessionId !== sessionId) return;
-          console.warn("Online TTS failed, falling back to Browser Web Speech API");
-          this.currentAudioElement = null;
-          this.speakWithWebSpeech(cleanText, onProgress, onEnd, sessionId);
-        };
-
-        const playPromise = audio.play();
-        if (playPromise !== undefined) {
-          playPromise.catch((err) => {
+          audio.ontimeupdate = () => {
             if (this.activeSessionId !== sessionId) return;
-            console.warn("Audio autoplay blocked or failed, fallback to Web Speech:", err);
+            if (onProgress && audio.currentTime) {
+              onProgress(audio.currentTime);
+            }
+          };
+
+          audio.onended = () => {
+            if (this.activeSessionId !== sessionId) return;
+            this.currentAudioElement = null;
+            if (this.currentBlobUrl) {
+              URL.revokeObjectURL(this.currentBlobUrl);
+              this.currentBlobUrl = null;
+            }
+            if (onEnd) onEnd();
+          };
+
+          audio.onerror = () => {
+            if (this.activeSessionId !== sessionId) return;
+            console.warn("Audio playback failed, attempting web speech fallback");
             this.speakWithWebSpeech(cleanText, onProgress, onEnd, sessionId);
-          });
+          };
+
+          const playPromise = audio.play();
+          if (playPromise !== undefined) {
+            await playPromise.catch((err) => {
+              if (this.activeSessionId !== sessionId) return;
+              console.warn("Autoplay blocked or play error:", err);
+              this.speakWithWebSpeech(cleanText, onProgress, onEnd, sessionId);
+            });
+          }
+          return;
         }
-        return;
       } catch (err) {
         if (this.activeSessionId !== sessionId) return;
-        console.warn("Online TTS error, falling back:", err);
+        console.warn("Online TTS request error:", err);
       }
     }
 
@@ -193,7 +209,6 @@ class SpaceAudioManager {
     this.activeSessionId++;
 
     if (this.currentAudioElement) {
-      // Clear all listeners before stopping to avoid synthetic onerror events
       this.currentAudioElement.onended = null;
       this.currentAudioElement.onerror = null;
       this.currentAudioElement.ontimeupdate = null;
@@ -204,6 +219,15 @@ class SpaceAudioManager {
         // ignore
       }
       this.currentAudioElement = null;
+    }
+
+    if (this.currentBlobUrl) {
+      try {
+        URL.revokeObjectURL(this.currentBlobUrl);
+      } catch {
+        // ignore
+      }
+      this.currentBlobUrl = null;
     }
 
     if (typeof window !== "undefined" && "speechSynthesis" in window) {
